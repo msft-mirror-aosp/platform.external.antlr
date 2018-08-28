@@ -48,6 +48,7 @@ public abstract class Lexer extends BaseRecognizer implements TokenSource {
 		this.input = input;
 	}
 
+	@Override
 	public void reset() {
 		super.reset(); // reset all recognizer state variables
 		// wack Lexer state variables
@@ -78,12 +79,7 @@ public abstract class Lexer extends BaseRecognizer implements TokenSource {
 			state.tokenStartLine = input.getLine();
 			state.text = null;
 			if ( input.LA(1)==CharStream.EOF ) {
-                Token eof = new CommonToken((CharStream)input,Token.EOF,
-                                            Token.DEFAULT_CHANNEL,
-                                            input.index(),input.index());
-                eof.setLine(getLine());
-                eof.setCharPositionInLine(getCharPositionInLine());
-                return eof;
+				return getEOFToken();
 			}
 			try {
 				mTokens();
@@ -110,6 +106,18 @@ public abstract class Lexer extends BaseRecognizer implements TokenSource {
 		}
 	}
 
+	/** Returns the EOF token (default), if you need
+	 *  to return a custom token instead override this method.
+	 */
+	public Token getEOFToken() {
+		Token eof = new CommonToken(input,Token.EOF,
+									Token.DEFAULT_CHANNEL,
+									input.index(),input.index());
+		eof.setLine(getLine());
+		eof.setCharPositionInLine(getCharPositionInLine());
+		return eof;
+	}
+
 	/** Instruct the lexer to skip creating a token for current lexer rule
 	 *  and look for another token.  nextToken() knows to keep looking when
 	 *  a lexer rule finishes with token set to SKIP_TOKEN.  Recall that
@@ -134,6 +142,7 @@ public abstract class Lexer extends BaseRecognizer implements TokenSource {
 		return this.input;
 	}
 
+	@Override
 	public String getSourceName() {
 		return input.getSourceName();
 	}
@@ -250,6 +259,7 @@ public abstract class Lexer extends BaseRecognizer implements TokenSource {
 		state.text = text;
 	}
 
+	@Override
 	public void reportError(RecognitionException e) {
 		/** TODO: not thought about recovery in lexer yet.
 		 *
@@ -265,8 +275,9 @@ public abstract class Lexer extends BaseRecognizer implements TokenSource {
 		displayRecognitionError(this.getTokenNames(), e);
 	}
 
+	@Override
 	public String getErrorMessage(RecognitionException e, String[] tokenNames) {
-		String msg = null;
+		String msg;
 		if ( e instanceof MismatchedTokenException ) {
 			MismatchedTokenException mte = (MismatchedTokenException)e;
 			msg = "mismatched character "+getCharErrorDisplay(e.c)+" expecting "+getCharErrorDisplay(mte.expecting);

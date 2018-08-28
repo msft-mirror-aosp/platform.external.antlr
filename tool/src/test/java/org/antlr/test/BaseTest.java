@@ -39,20 +39,36 @@ import org.antlr.tool.ANTLRErrorListener;
 import org.antlr.tool.ErrorManager;
 import org.antlr.tool.GrammarSemanticsMessage;
 import org.antlr.tool.Message;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import javax.tools.*;
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import static org.junit.Assert.*;
 
 public abstract class BaseTest {
+	// -J-Dorg.antlr.test.BaseTest.level=FINE
+	private static final Logger LOGGER = Logger.getLogger(BaseTest.class.getName());
+
 	public static final String newline = System.getProperty("line.separator");
 
 	public static final String jikes = null;//"/usr/bin/jikes";
 	public static final String pathSep = System.getProperty("path.separator");
+
+	public static final boolean TEST_IN_SAME_PROCESS = Boolean.parseBoolean(System.getProperty("antlr.testinprocess"));
 
    /**
     * When runnning from Maven, the junit tests are run via the surefire plugin. It sets the
@@ -68,30 +84,30 @@ public abstract class BaseTest {
 
 	public String tmpdir = null;
 
-    /** reset during setUp and set to true if we find a problem */
-    protected boolean lastTestFailed = false;
-
 	/** If error during parser execution, store stderr here; can't return
      *  stdout and stderr.  This doesn't trap errors from running antlr.
      */
 	protected String stderrDuringParse;
 
+	@Rule
+	public final TestRule testWatcher = new TestWatcher() {
+
+		@Override
+		protected void succeeded(Description description) {
+			// remove tmpdir if no error.
+			eraseTempDir();
+		}
+
+	};
+
     @Before
 	public void setUp() throws Exception {
-        lastTestFailed = false; // hope for the best, but set to true in asserts that fail
         // new output dir for each test
         tmpdir = new File(System.getProperty("java.io.tmpdir"),
 						  "antlr-"+getClass().getName()+"-"+
 						  System.currentTimeMillis()).getAbsolutePath();
         ErrorManager.resetErrorState();
         STGroup.defaultGroup = new STGroup();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        // remove tmpdir if no error.
-        if ( !lastTestFailed ) eraseTempDir();
-
     }
 
     protected Tool newTool(String[] args) {
@@ -150,7 +166,7 @@ public abstract class BaseTest {
 		mkdir(tmpdir);
 		writeFile(tmpdir, fileName, grammarStr);
 		try {
-			final List options = new ArrayList();
+			final List<String> options = new ArrayList<String>();
 			if ( debug ) {
 				options.add("-debug");
 			}
@@ -174,7 +190,7 @@ public abstract class BaseTest {
 					allIsWell = false;
 					System.err.println("antlr reports errors from "+options);
 					for (int i = 0; i < equeue.errors.size(); i++) {
-						Message msg = (Message) equeue.errors.get(i);
+						Message msg = equeue.errors.get(i);
 						System.err.println(msg);
 					}
                     System.out.println("!!!\ngrammar:");
@@ -197,11 +213,13 @@ public abstract class BaseTest {
 							   String input,
 							   boolean debug)
 	{
-		rawGenerateAndBuildRecognizer(grammarFileName,
+		boolean compiled = rawGenerateAndBuildRecognizer(grammarFileName,
 									  grammarStr,
 									  null,
 									  lexerName,
 									  debug);
+		Assert.assertTrue(compiled);
+
 		writeFile(tmpdir, "input", input);
 		return rawExecRecognizer(null,
 								 null,
@@ -221,11 +239,13 @@ public abstract class BaseTest {
 								String startRuleName,
 								String input, boolean debug)
 	{
-		rawGenerateAndBuildRecognizer(grammarFileName,
+		boolean compiled = rawGenerateAndBuildRecognizer(grammarFileName,
 									  grammarStr,
 									  parserName,
 									  lexerName,
 									  debug);
+		Assert.assertTrue(compiled);
+
 		writeFile(tmpdir, "input", input);
 		boolean parserBuildsTrees =
 			grammarStr.indexOf("output=AST")>=0 ||
@@ -281,18 +301,20 @@ public abstract class BaseTest {
 									boolean debug)
 	{
 		// build the parser
-		rawGenerateAndBuildRecognizer(parserGrammarFileName,
+		boolean compiled = rawGenerateAndBuildRecognizer(parserGrammarFileName,
 									  parserGrammarStr,
 									  parserName,
 									  lexerName,
 									  debug);
+		Assert.assertTrue(compiled);
 
 		// build the tree parser
-		rawGenerateAndBuildRecognizer(treeParserGrammarFileName,
+		compiled = rawGenerateAndBuildRecognizer(treeParserGrammarFileName,
 									  treeParserGrammarStr,
 									  treeParserName,
 									  lexerName,
 									  debug);
+		Assert.assertTrue(compiled);
 
 		writeFile(tmpdir, "input", input);
 
@@ -327,6 +349,10 @@ public abstract class BaseTest {
 		//System.out.println(grammarStr);
 		boolean allIsWell =
 			antlr(grammarFileName, grammarFileName, grammarStr, debug);
+		if (!allIsWell) {
+			return false;
+		}
+
 		if ( lexerName!=null ) {
 			boolean ok;
 			if ( parserName!=null ) {
@@ -360,11 +386,77 @@ public abstract class BaseTest {
 	}
 
 	public String execRecognizer() {
+		return execClass("Test");
+	}
+
+	public String execClass(String className) {
+		if (TEST_IN_SAME_PROCESS) {
+			try {
+				ClassLoader loader = new URLClassLoader(new URL[] { new File(tmpdir).toURI().toURL() }, ClassLoader.getSystemClassLoader());
+                final Class<?> mainClass = (Class<?>)loader.loadClass(className);
+				final Method mainMethod = mainClass.getDeclaredMethod("main", String[].class);
+				PipedInputStream stdoutIn = new PipedInputStream();
+				PipedInputStream stderrIn = new PipedInputStream();
+				PipedOutputStream stdoutOut = new PipedOutputStream(stdoutIn);
+				PipedOutputStream stderrOut = new PipedOutputStream(stderrIn);
+				String inputFile = new File(tmpdir, "input").getAbsolutePath();
+				StreamVacuum stdoutVacuum = new StreamVacuum(stdoutIn, inputFile);
+				StreamVacuum stderrVacuum = new StreamVacuum(stderrIn, inputFile);
+
+				PrintStream originalOut = System.out;
+				System.setOut(new PrintStream(stdoutOut));
+				try {
+					PrintStream originalErr = System.err;
+					try {
+						System.setErr(new PrintStream(stderrOut));
+						stdoutVacuum.start();
+						stderrVacuum.start();
+						mainMethod.invoke(null, (Object)new String[] { inputFile });
+					}
+					finally {
+						System.setErr(originalErr);
+					}
+				}
+				finally {
+					System.setOut(originalOut);
+				}
+
+				stdoutOut.close();
+				stderrOut.close();
+				stdoutVacuum.join();
+				stderrVacuum.join();
+				String output = stdoutVacuum.toString();
+				if ( stderrVacuum.toString().length()>0 ) {
+					this.stderrDuringParse = stderrVacuum.toString();
+					System.err.println("exec stderrVacuum: "+ stderrVacuum);
+				}
+				return output;
+			} catch (MalformedURLException ex) {
+				LOGGER.log(Level.SEVERE, null, ex);
+			} catch (IOException ex) {
+				LOGGER.log(Level.SEVERE, null, ex);
+			} catch (InterruptedException ex) {
+				LOGGER.log(Level.SEVERE, null, ex);
+			} catch (IllegalAccessException ex) {
+				LOGGER.log(Level.SEVERE, null, ex);
+			} catch (IllegalArgumentException ex) {
+				LOGGER.log(Level.SEVERE, null, ex);
+			} catch (InvocationTargetException ex) {
+				LOGGER.log(Level.SEVERE, null, ex);
+			} catch (NoSuchMethodException ex) {
+				LOGGER.log(Level.SEVERE, null, ex);
+			} catch (SecurityException ex) {
+				LOGGER.log(Level.SEVERE, null, ex);
+			} catch (ClassNotFoundException ex) {
+				LOGGER.log(Level.SEVERE, null, ex);
+			}
+		}
+
 		try {
 			String inputFile = new File(tmpdir, "input").getAbsolutePath();
 			String[] args = new String[] {
 				"java", "-classpath", tmpdir+pathSep+CLASSPATH,
-				"Test", inputFile
+				className, inputFile
 			};
 			//String cmdLine = "java -classpath "+CLASSPATH+pathSep+tmpdir+" Test " + new File(tmpdir, "input").getAbsolutePath();
 			//System.out.println("execParser: "+cmdLine);
@@ -377,7 +469,7 @@ public abstract class BaseTest {
 			process.waitFor();
 			stdoutVacuum.join();
 			stderrVacuum.join();
-			String output = null;
+			String output;
 			output = stdoutVacuum.toString();
 			if ( stderrVacuum.toString().length()>0 ) {
 				this.stderrDuringParse = stderrVacuum.toString();
@@ -440,7 +532,7 @@ public abstract class BaseTest {
 						   */
 		Message foundMsg = null;
 		for (int i = 0; i < equeue.errors.size(); i++) {
-			Message m = (Message)equeue.errors.get(i);
+			Message m = equeue.errors.get(i);
 			if (m.msgID==expectedMessage.msgID ) {
 				foundMsg = m;
 			}
@@ -460,7 +552,7 @@ public abstract class BaseTest {
 	{
 		Message foundMsg = null;
 		for (int i = 0; i < equeue.warnings.size(); i++) {
-			Message m = (Message)equeue.warnings.get(i);
+			Message m = equeue.warnings.get(i);
 			if (m.msgID==expectedMessage.msgID ) {
 				foundMsg = m;
 			}
@@ -478,7 +570,7 @@ public abstract class BaseTest {
         //System.out.println("errors="+equeue);
         Message foundMsg = null;
         for (int i = 0; i < equeue.errors.size(); i++) {
-            Message m = (Message)equeue.errors.get(i);
+            Message m = equeue.errors.get(i);
             if (m.msgID==expectedMessage.msgID ) {
                 foundMsg = m;
             }
@@ -508,6 +600,7 @@ public abstract class BaseTest {
 			sucker = new Thread(this);
 			sucker.start();
 		}
+		@Override
 		public void run() {
 			try {
 				String line = in.readLine();
@@ -527,6 +620,7 @@ public abstract class BaseTest {
 		public void join() throws InterruptedException {
 			sucker.join();
 		}
+		@Override
 		public String toString() {
 			return buf.toString();
 		}
@@ -535,6 +629,7 @@ public abstract class BaseTest {
     public static class FilteringTokenStream extends CommonTokenStream {
         public FilteringTokenStream(TokenSource src) { super(src); }
         Set<Integer> hide = new HashSet<Integer>();
+		@Override
         protected void sync(int i) {
             super.sync(i);
             if ( hide.contains(get(i).getType()) ) get(i).setChannel(Token.HIDDEN_CHANNEL);
@@ -819,10 +914,10 @@ public abstract class BaseTest {
 		return lines[0].substring(prefix.length(),lines[0].length());
 	}
 
-	public List realElements(List elements) {
-		List n = new ArrayList();
+	public <T> List<T> realElements(List<T> elements) {
+		List<T> n = new ArrayList<T>();
 		for (int i = Label.NUM_FAUX_LABELS+Label.MIN_TOKEN_TYPE - 1; i < elements.size(); i++) {
-			Object o = (Object) elements.get(i);
+			T o = elements.get(i);
 			if ( o!=null ) {
 				n.add(o);
 			}
@@ -831,12 +926,11 @@ public abstract class BaseTest {
 	}
 
 	public List<String> realElements(Map<String, Integer> elements) {
-		List n = new ArrayList();
-		Iterator iterator = elements.keySet().iterator();
-		while (iterator.hasNext()) {
-			String tokenID = (String) iterator.next();
-			if ( elements.get(tokenID) >= Label.MIN_TOKEN_TYPE ) {
-				n.add(tokenID+"="+elements.get(tokenID));
+		List<String> n = new ArrayList<String>();
+		for (Map.Entry<String, Integer> entry : elements.entrySet()) {
+			String tokenID = entry.getKey();
+			if ( entry.getValue() >= Label.MIN_TOKEN_TYPE ) {
+				n.add(tokenID+"="+entry.getValue());
 			}
 		}
 		Collections.sort(n);
@@ -847,7 +941,7 @@ public abstract class BaseTest {
         String lines[] = s.split("\n");
         Arrays.sort(lines);
         List<String> linesL = Arrays.asList(lines);
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         for (String l : linesL) {
             buf.append(l);
             buf.append('\n');
@@ -866,7 +960,7 @@ public abstract class BaseTest {
      * @param m The Map that contains keys we wish to return in sorted order
      * @return A string that represents all the keys in sorted order.
      */
-    public String sortMapToString(Map m) {
+    public <K, V> String sortMapToString(Map<K, V> m) {
 
         System.out.println("Map toString looks like: " + m.toString());
         // Pass in crap, and get nothing back
@@ -877,28 +971,9 @@ public abstract class BaseTest {
 
         // Sort the keys in the Map
         //
-        TreeMap nset = new TreeMap(m);
+        TreeMap<K, V> nset = new TreeMap<K, V>(m);
 
         System.out.println("Tree map looks like: " + nset.toString());
         return nset.toString();
     }
-
-    // override to track errors
-
-    public void assertEquals(String msg, Object a, Object b) { try {Assert.assertEquals(msg,a,b);} catch (Error e) {lastTestFailed=true; throw e;} }
-    public void assertEquals(Object a, Object b) { try {Assert.assertEquals(a,b);} catch (Error e) {lastTestFailed=true; throw e;} }
-    public void assertEquals(String msg, long a, long b) { try {Assert.assertEquals(msg,a,b);} catch (Error e) {lastTestFailed=true; throw e;} }
-    public void assertEquals(long a, long b) { try {Assert.assertEquals(a,b);} catch (Error e) {lastTestFailed=true; throw e;} }
-
-    public void assertTrue(String msg, boolean b) { try {Assert.assertTrue(msg,b);} catch (Error e) {lastTestFailed=true; throw e;} }
-    public void assertTrue(boolean b) { try {Assert.assertTrue(b);} catch (Error e) {lastTestFailed=true; throw e;} }
-
-    public void assertFalse(String msg, boolean b) { try {Assert.assertFalse(msg,b);} catch (Error e) {lastTestFailed=true; throw e;} }
-    public void assertFalse(boolean b) { try {Assert.assertFalse(b);} catch (Error e) {lastTestFailed=true; throw e;} }
-
-    public void assertNotNull(String msg, Object p) { try {Assert.assertNotNull(msg, p);} catch (Error e) {lastTestFailed=true; throw e;} }
-    public void assertNotNull(Object p) { try {Assert.assertNotNull(p);} catch (Error e) {lastTestFailed=true; throw e;} }
-
-    public void assertNull(String msg, Object p) { try {Assert.assertNull(msg, p);} catch (Error e) {lastTestFailed=true; throw e;} }
-    public void assertNull(Object p) { try {Assert.assertNull(p);} catch (Error e) {lastTestFailed=true; throw e;} }
 }

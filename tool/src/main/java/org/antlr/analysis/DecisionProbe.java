@@ -40,7 +40,7 @@ import java.util.*;
 /** Collection of information about what is wrong with a decision as
  *  discovered while building the DFA predictor.
  *
- *  The information is collected during NFA->DFA conversion and, while
+ *  The information is collected during NFA&rarr;DFA conversion and, while
  *  some of this is available elsewhere, it is nice to have it all tracked
  *  in one spot so a great error message can be easily had.  I also like
  *  the fact that this object tracks it all for later perusing to make an
@@ -118,7 +118,7 @@ public class DecisionProbe {
 	 */
 	protected Set<Integer> altsWithProblem = new HashSet<Integer>();
 
-	/** If decision with > 1 alt has recursion in > 1 alt, it's (likely) nonregular
+	/** If decision with &gt; 1 alt has recursion in &gt; 1 alt, it's (likely) nonregular
 	 *  lookahead.  The decision cannot be made with a DFA.
 	 *  the alts are stored in altsWithProblem.
 	 */
@@ -156,7 +156,7 @@ public class DecisionProbe {
 	 *  an input sequence.  Tracks the input position
 	 *  we were at the last time at this node.  If same input position, then
 	 *  we'd have reached same state without consuming input...probably an
-	 *  infinite loop.  Stop.  Set<String>.  The strings look like
+	 *  infinite loop.  Stop.  Set&lt;String&gt;.  The strings look like
 	 *  stateNumber_labelIndex.
 	 */
 	protected Set<String> statesVisitedAtInputDepth;
@@ -190,18 +190,15 @@ public class DecisionProbe {
 	 *  no nondeterminisms unresolved by syn preds, all is ok with decision.
 	 */
 	public boolean isDeterministic() {
-		if ( danglingStates.size()==0 &&
-			 statesWithSyntacticallyAmbiguousAltsSet.size()==0 &&
-			 dfa.getUnreachableAlts().size()==0 )
+		if ( danglingStates.isEmpty() &&
+			 statesWithSyntacticallyAmbiguousAltsSet.isEmpty() &&
+			 dfa.getUnreachableAlts().isEmpty() )
 		{
 			return true;
 		}
 
 		if ( statesWithSyntacticallyAmbiguousAltsSet.size()>0 ) {
-			Iterator it =
-				statesWithSyntacticallyAmbiguousAltsSet.iterator();
-			while (	it.hasNext() ) {
-				DFAState d = (DFAState) it.next();
+			for (DFAState d : statesWithSyntacticallyAmbiguousAltsSet) {
 				if ( !statesResolvedWithSemanticPredicatesSet.contains(d) ) {
 					return false;
 				}
@@ -222,7 +219,7 @@ public class DecisionProbe {
 		return stateToRecursionOverflowConfigurationsMap.size()>0;
 	}
 
-	/** Found recursion in > 1 alt */
+	/** Found recursion in &gt; 1 alt */
 	public boolean isNonLLStarDecision() {
 		return nonLLStarDecision;
 	}
@@ -246,23 +243,23 @@ public class DecisionProbe {
 	 *  terminate early to avoid infinite recursion for example (due to
 	 *  left recursion perhaps).
 	 */
-	public Set getDanglingStates() {
+	public Set<DFAState> getDanglingStates() {
 		return danglingStates;
 	}
 
-    public Set getNonDeterministicAlts() {
+    public Set<Integer> getNonDeterministicAlts() {
         return altsWithProblem;
 	}
 
 	/** Return the sorted list of alts that conflict within a single state.
 	 *  Note that predicates may resolve the conflict.
 	 */
-	public List getNonDeterministicAltsForState(DFAState targetState) {
-		Set nondetAlts = targetState.getNonDeterministicAlts();
+	public List<Integer> getNonDeterministicAltsForState(DFAState targetState) {
+		Set<Integer> nondetAlts = targetState.getNonDeterministicAlts();
 		if ( nondetAlts==null ) {
 			return null;
 		}
-		List sorted = new LinkedList();
+		List<Integer> sorted = new LinkedList<Integer>();
 		sorted.addAll(nondetAlts);
 		Collections.sort(sorted); // make sure it's 1, 2, ...
 		return sorted;
@@ -272,7 +269,7 @@ public class DecisionProbe {
 	 *  conflict.  You must report a problem for each state in this set
 	 *  because each state represents a different input sequence.
 	 */
-	public Set getDFAStatesWithSyntacticallyAmbiguousAlts() {
+	public Set<DFAState> getDFAStatesWithSyntacticallyAmbiguousAlts() {
 		return statesWithSyntacticallyAmbiguousAltsSet;
 	}
 
@@ -282,7 +279,7 @@ public class DecisionProbe {
 	 *  that for this DFA state, that alt is disabled.  There may be other
 	 *  accept states for that alt that make an alt reachable.
 	 */
-	public Set getDisabledAlternatives(DFAState d) {
+	public Set<Integer> getDisabledAlternatives(DFAState d) {
 		return d.getDisabledAlternatives();
 	}
 
@@ -294,12 +291,12 @@ public class DecisionProbe {
 		stateToRecursionOverflowConfigurationsMap.remove(stateI);
 	}
 
-	/** Return a List<Label> indicating an input sequence that can be matched
+	/** Return a List&lt;Label&gt; indicating an input sequence that can be matched
 	 *  from the start state of the DFA to the targetState (which is known
 	 *  to have a problem).
 	 */
 	public List<Label> getSampleNonDeterministicInputSequence(DFAState targetState) {
-		Set dfaStates = getDFAPathStatesToTarget(targetState);
+		Set<DFAState> dfaStates = getDFAPathStatesToTarget(targetState);
 		statesVisitedDuringSampleSequence = new HashSet<Integer>();
 		List<Label> labels = new ArrayList<Label>(); // may access ith element; use array
 		if ( dfa==null || dfa.startState==null ) {
@@ -312,15 +309,15 @@ public class DecisionProbe {
 		return labels;
 	}
 
-	/** Given List<Label>, return a String with a useful representation
+	/** Given List&lt;Label&gt;, return a String with a useful representation
 	 *  of the associated input string.  One could show something different
 	 *  for lexers and parsers, for example.
 	 */
-	public String getInputSequenceDisplay(List labels) {
+	public String getInputSequenceDisplay(List<? extends Label> labels) {
         Grammar g = dfa.nfa.grammar;
-		StringBuffer buf = new StringBuffer();
-		for (Iterator it = labels.iterator(); it.hasNext();) {
-			Label label = (Label) it.next();
+		StringBuilder buf = new StringBuilder();
+		for (Iterator<? extends Label> it = labels.iterator(); it.hasNext();) {
+			Label label = it.next();
 			buf.append(label.toString(g));
 			if ( it.hasNext() && g.type!=Grammar.LEXER ) {
 				buf.append(' ');
@@ -337,13 +334,13 @@ public class DecisionProbe {
 	 *  The first NFA state for all NFA paths will be the same: the starting
 	 *  NFA state of the first nondeterministic alt.  Imagine (A|B|A|A):
 	 *
-	 * 	5->9-A->o
+	 * 	5-&gt;9-A-&gt;o
 	 *  |
-	 *  6->10-B->o
+	 *  6-&gt;10-B-&gt;o
 	 *  |
-	 *  7->11-A->o
+	 *  7-&gt;11-A-&gt;o
 	 *  |
-	 *  8->12-A->o
+	 *  8-&gt;12-A-&gt;o
 	 *
 	 *  There are 3 nondeterministic alts.  The paths should be:
 	 *  5 9 ...
@@ -356,12 +353,12 @@ public class DecisionProbe {
 	 *  the extra state beginning each alt in my NFA structures).  Here,
 	 *  firstAlt=1.
 	 */
-	public List getNFAPathStatesForAlt(int firstAlt,
+	public List<? extends NFAState> getNFAPathStatesForAlt(int firstAlt,
 									   int alt,
-									   List labels)
+									   List<? extends Label> labels)
 	{
 		NFAState nfaStart = dfa.getNFADecisionStartState();
-		List path = new LinkedList();
+		List<NFAState> path = new LinkedList<NFAState>();
 		// first add all NFA states leading up to altStart state
 		for (int a=firstAlt; a<=alt; a++) {
 			NFAState s =
@@ -375,7 +372,7 @@ public class DecisionProbe {
 		path.add(isolatedAltStart);
 
 		// add the actual path now
-		statesVisitedAtInputDepth = new HashSet();
+		statesVisitedAtInputDepth = new HashSet<String>();
 		getNFAPath(isolatedAltStart,
 				   0,
 				   labels,
@@ -388,11 +385,11 @@ public class DecisionProbe {
 	 *  predicate context for a particular alt.
 	 */
     public SemanticContext getSemanticContextForAlt(DFAState d, int alt) {
-		Map altToPredMap = (Map)stateToAltSetWithSemanticPredicatesMap.get(d);
+		Map<Integer, SemanticContext> altToPredMap = stateToAltSetWithSemanticPredicatesMap.get(d);
 		if ( altToPredMap==null ) {
 			return null;
 		}
-		return (SemanticContext)altToPredMap.get(Utils.integer(alt));
+		return altToPredMap.get(Utils.integer(alt));
 	}
 
 	/** At least one alt refs a sem or syn pred */
@@ -400,7 +397,7 @@ public class DecisionProbe {
 		return stateToAltSetWithSemanticPredicatesMap.size()>0;
 	}
 
-	public Set getNondeterministicStatesResolvedWithSemanticPredicate() {
+	public Set<DFAState> getNondeterministicStatesResolvedWithSemanticPredicate() {
 		return statesResolvedWithSemanticPredicatesSet;
 	}
 
@@ -422,13 +419,13 @@ public class DecisionProbe {
 		issueRecursionWarnings();
 
 		// generate a separate message for each problem state in DFA
-		Set resolvedStates = getNondeterministicStatesResolvedWithSemanticPredicate();
-		Set problemStates = getDFAStatesWithSyntacticallyAmbiguousAlts();
+		Set<DFAState> resolvedStates = getNondeterministicStatesResolvedWithSemanticPredicate();
+		Set<DFAState> problemStates = getDFAStatesWithSyntacticallyAmbiguousAlts();
 		if ( problemStates.size()>0 ) {
-			Iterator it =
+			Iterator<DFAState> it =
 				problemStates.iterator();
 			while (	it.hasNext() && !dfa.nfa.grammar.NFAToDFAConversionExternallyAborted() ) {
-				DFAState d = (DFAState) it.next();
+				DFAState d = it.next();
 				Map<Integer, Set<Token>> insufficientAltToLocations = getIncompletelyCoveredAlts(d);
 				if ( insufficientAltToLocations!=null && insufficientAltToLocations.size()>0 ) {
 					ErrorManager.insufficientPredicates(this,d,insufficientAltToLocations);
@@ -437,7 +434,7 @@ public class DecisionProbe {
 				if ( resolvedStates==null || !resolvedStates.contains(d) ) {
 					// first strip last alt from disableAlts if it's wildcard
 					// then don't print error if no more disable alts
-					Set disabledAlts = getDisabledAlternatives(d);
+					Set<Integer> disabledAlts = getDisabledAlternatives(d);
 					stripWildCardAlts(disabledAlts);
 					if ( disabledAlts.size()>0 ) {
 						// nondeterminism; same input predicts multiple alts.
@@ -455,11 +452,10 @@ public class DecisionProbe {
 			}
 		}
 
-		Set danglingStates = getDanglingStates();
+		Set<DFAState> danglingStates = getDanglingStates();
 		if ( danglingStates.size()>0 ) {
 			//System.err.println("no emanating edges for states: "+danglingStates);
-			for (Iterator it = danglingStates.iterator(); it.hasNext();) {
-				DFAState d = (DFAState) it.next();
+			for (DFAState d : danglingStates) {
 				ErrorManager.danglingState(this,d);
 			}
 		}
@@ -498,21 +494,21 @@ public class DecisionProbe {
 	 *  if that alt is a simple wildcard.  If so, treat like an else clause
 	 *  and don't emit the error.  Strip out the last alt if it's wildcard.
 	 */
-	protected void stripWildCardAlts(Set disabledAlts) {
-		List sortedDisableAlts = new ArrayList(disabledAlts);
+	protected void stripWildCardAlts(Set<Integer> disabledAlts) {
+		List<Integer> sortedDisableAlts = new ArrayList<Integer>(disabledAlts);
 		Collections.sort(sortedDisableAlts);
 		Integer lastAlt =
-			(Integer)sortedDisableAlts.get(sortedDisableAlts.size()-1);
+			sortedDisableAlts.get(sortedDisableAlts.size()-1);
 		GrammarAST blockAST =
 			dfa.nfa.grammar.getDecisionBlockAST(dfa.decisionNumber);
 		//System.out.println("block with error = "+blockAST.toStringTree());
-		GrammarAST lastAltAST = null;
+		GrammarAST lastAltAST;
 		if ( blockAST.getChild(0).getType()==ANTLRParser.OPTIONS ) {
 			// if options, skip first child: ( options { ( = greedy false ) )
 			lastAltAST = (GrammarAST)blockAST.getChild(lastAlt.intValue());
 		}
 		else {
-			lastAltAST = (GrammarAST)blockAST.getChild(lastAlt.intValue()-1);
+			lastAltAST = (GrammarAST)blockAST.getChild(lastAlt -1);
 		}
 		//System.out.println("last alt is "+lastAltAST.toStringTree());
 		// if last alt looks like ( ALT . <end-of-alt> ) then wildcard
@@ -530,81 +526,79 @@ public class DecisionProbe {
 
 	protected void issueRecursionWarnings() {
 		// RECURSION OVERFLOW
-		Set dfaStatesWithRecursionProblems =
+		Set<Integer> dfaStatesWithRecursionProblems =
 			stateToRecursionOverflowConfigurationsMap.keySet();
 		// now walk truly unique (unaliased) list of dfa states with inf recur
 		// Goal: create a map from alt to map<target,List<callsites>>
 		// Map<Map<String target, List<NFAState call sites>>
-		Map altToTargetToCallSitesMap = new HashMap();
+		Map<Integer, Map<String, Set<NFAState>>> altToTargetToCallSitesMap =
+			new HashMap<Integer, Map<String, Set<NFAState>>>();
 		// track a single problem DFA state for each alt
-		Map altToDFAState = new HashMap();
+		Map<Integer, DFAState> altToDFAState = new HashMap<Integer, DFAState>();
 		computeAltToProblemMaps(dfaStatesWithRecursionProblems,
 								stateToRecursionOverflowConfigurationsMap,
 								altToTargetToCallSitesMap, // output param
 								altToDFAState);            // output param
 
 		// walk each alt with recursion overflow problems and generate error
-		Set alts = altToTargetToCallSitesMap.keySet();
-		List sortedAlts = new ArrayList(alts);
+		Set<Integer> alts = altToTargetToCallSitesMap.keySet();
+		List<Integer> sortedAlts = new ArrayList<Integer>(alts);
 		Collections.sort(sortedAlts);
-		for (Iterator altsIt = sortedAlts.iterator(); altsIt.hasNext();) {
-			Integer altI = (Integer) altsIt.next();
-			Map targetToCallSiteMap =
-				(Map)altToTargetToCallSitesMap.get(altI);
-			Set targetRules = targetToCallSiteMap.keySet();
-			Collection callSiteStates = targetToCallSiteMap.values();
-			DFAState sampleBadState = (DFAState)altToDFAState.get(altI);
+		for (Integer altI : sortedAlts) {
+			Map<String, Set<NFAState>> targetToCallSiteMap =
+				altToTargetToCallSitesMap.get(altI);
+			Set<String> targetRules = targetToCallSiteMap.keySet();
+			Collection<Set<NFAState>> callSiteStates = targetToCallSiteMap.values();
+			DFAState sampleBadState = altToDFAState.get(altI);
 			ErrorManager.recursionOverflow(this,
 										   sampleBadState,
-										   altI.intValue(),
+										   altI,
 										   targetRules,
 										   callSiteStates);
 		}
 	}
 
-	private void computeAltToProblemMaps(Set dfaStatesUnaliased,
-										 Map configurationsMap,
-										 Map altToTargetToCallSitesMap,
-										 Map altToDFAState)
+	private void computeAltToProblemMaps(Set<Integer> dfaStatesUnaliased,
+										 Map<Integer, List<NFAConfiguration>> configurationsMap,
+										 Map<Integer, Map<String, Set<NFAState>>> altToTargetToCallSitesMap,
+										 Map<Integer, DFAState> altToDFAState)
 	{
-		for (Iterator it = dfaStatesUnaliased.iterator(); it.hasNext();) {
-			Integer stateI = (Integer) it.next();
+		for (Integer stateI : dfaStatesUnaliased) {
 			// walk this DFA's config list
-			List configs = (List)configurationsMap.get(stateI);
+			List<? extends NFAConfiguration> configs = configurationsMap.get(stateI);
 			for (int i = 0; i < configs.size(); i++) {
-				NFAConfiguration c = (NFAConfiguration) configs.get(i);
+				NFAConfiguration c = configs.get(i);
 				NFAState ruleInvocationState = dfa.nfa.getState(c.state);
 				Transition transition0 = ruleInvocationState.transition[0];
 				RuleClosureTransition ref = (RuleClosureTransition)transition0;
 				String targetRule = ((NFAState) ref.target).enclosingRule.name;
 				Integer altI = Utils.integer(c.alt);
-				Map targetToCallSiteMap =
-					(Map)altToTargetToCallSitesMap.get(altI);
+				Map<String, Set<NFAState>> targetToCallSiteMap =
+					altToTargetToCallSitesMap.get(altI);
 				if ( targetToCallSiteMap==null ) {
-					targetToCallSiteMap = new HashMap();
+					targetToCallSiteMap = new HashMap<String, Set<NFAState>>();
 					altToTargetToCallSitesMap.put(altI, targetToCallSiteMap);
 				}
-				Set callSites =
-					(HashSet)targetToCallSiteMap.get(targetRule);
+				Set<NFAState> callSites =
+					targetToCallSiteMap.get(targetRule);
 				if ( callSites==null ) {
-					callSites = new HashSet();
+					callSites = new HashSet<NFAState>();
 					targetToCallSiteMap.put(targetRule, callSites);
 				}
 				callSites.add(ruleInvocationState);
 				// track one problem DFA state per alt
 				if ( altToDFAState.get(altI)==null ) {
-					DFAState sampleBadState = dfa.getState(stateI.intValue());
+					DFAState sampleBadState = dfa.getState(stateI);
 					altToDFAState.put(altI, sampleBadState);
 				}
 			}
 		}
 	}
 
-	private Set getUnaliasedDFAStateSet(Set dfaStatesWithRecursionProblems) {
-		Set dfaStatesUnaliased = new HashSet();
-		for (Iterator it = dfaStatesWithRecursionProblems.iterator(); it.hasNext();) {
-			Integer stateI = (Integer) it.next();
-			DFAState d = dfa.getState(stateI.intValue());
+	private Set<Integer> getUnaliasedDFAStateSet(Set<Integer> dfaStatesWithRecursionProblems) {
+		Set<Integer> dfaStatesUnaliased = new HashSet<Integer>();
+		for (Integer stateI : dfaStatesWithRecursionProblems) {
+			DFAState d = dfa.getState(stateI);
 			dfaStatesUnaliased.add(Utils.integer(d.stateNumber));
 		}
 		return dfaStatesUnaliased;
@@ -689,8 +683,8 @@ public class DecisionProbe {
 	 *  tryToResolveWithSemanticPredicates() while flagging NFA configurations
 	 *  in d as resolved.
 	 */
-	public void reportAltPredicateContext(DFAState d, Map altPredicateContext) {
-		Map copy = new HashMap();
+	public void reportAltPredicateContext(DFAState d, Map<Integer, ? extends SemanticContext> altPredicateContext) {
+		Map<Integer, SemanticContext> copy = new HashMap<Integer, SemanticContext>();
 		copy.putAll(altPredicateContext);
 		stateToAltSetWithSemanticPredicatesMap.put(d,copy);
 	}
@@ -709,7 +703,7 @@ public class DecisionProbe {
 	 */
 	protected boolean reachesState(DFAState startState,
 								   DFAState targetState,
-								   Set states) {
+								   Set<DFAState> states) {
 		if ( startState==targetState ) {
 			states.add(targetState);
 			//System.out.println("found target DFA state "+targetState.getStateNumber());
@@ -750,9 +744,9 @@ public class DecisionProbe {
 		return false; // no path to targetState found.
 	}
 
-	protected Set getDFAPathStatesToTarget(DFAState targetState) {
-		Set dfaStates = new HashSet();
-		stateReachable = new HashMap();
+	protected Set<DFAState> getDFAPathStatesToTarget(DFAState targetState) {
+		Set<DFAState> dfaStates = new HashSet<DFAState>();
+		stateReachable = new HashMap<Integer, Integer>();
 		if ( dfa==null || dfa.startState==null ) {
 			return dfaStates;
 		}
@@ -763,7 +757,7 @@ public class DecisionProbe {
 	/** Given a start state and a final state, find a list of edge labels
 	 *  between the two ignoring epsilon.  Limit your scan to a set of states
 	 *  passed in.  This is used to show a sample input sequence that is
-	 *  nondeterministic with respect to this decision.  Return List<Label> as
+	 *  nondeterministic with respect to this decision.  Return List&lt;Label&gt; as
 	 *  a parameter.  The incoming states set must be all states that lead
 	 *  from startState to targetState and no others so this algorithm doesn't
 	 *  take a path that eventually leads to a state other than targetState.
@@ -771,7 +765,7 @@ public class DecisionProbe {
 	 */
 	protected void getSampleInputSequenceUsingStateSet(State startState,
 													   State targetState,
-													   Set states,
+													   Set<DFAState> states,
 													   List<Label> labels)
 	{
 		statesVisitedDuringSampleSequence.add(startState.stateNumber);
@@ -810,8 +804,8 @@ public class DecisionProbe {
 	 */
 	protected boolean getNFAPath(NFAState s,     // starting where?
 								 int labelIndex, // 0..labels.size()-1
-								 List labels,    // input sequence
-								 List path)      // output list of NFA states
+								 List<? extends Label> labels,    // input sequence
+								 List<? super NFAState> path)      // output list of NFA states
 	{
 		// track a visit to state s at input index labelIndex if not seen
 		String thisStateKey = getStateLabelIndexKey(s.stateNumber,labelIndex);
@@ -887,7 +881,7 @@ public class DecisionProbe {
 	}
 
 	protected String getStateLabelIndexKey(int s, int i) {
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append(s);
 		buf.append('_');
 		buf.append(i);

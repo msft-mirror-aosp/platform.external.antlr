@@ -27,23 +27,23 @@
  */
 package org.antlr.runtime.misc;
 
-import org.antlr.runtime.Token;
-
-import java.util.NoSuchElementException;
-
-/** A lookahead queue that knows how to mark/release locations
- *  in the buffer for backtracking purposes. Any markers force the FastQueue
- *  superclass to keep all tokens until no more markers; then can reset
- *  to avoid growing a huge buffer.
+/**
+ * A lookahead queue that knows how to mark/release locations in the buffer for
+ * backtracking purposes. Any markers force the {@link FastQueue} superclass to
+ * keep all elements until no more markers; then can reset to avoid growing a
+ * huge buffer.
  */
 public abstract class LookaheadStream<T> extends FastQueue<T> {
     public static final int UNINITIALIZED_EOF_ELEMENT_INDEX = Integer.MAX_VALUE;
 
     /** Absolute token index. It's the index of the symbol about to be
-	 *  read via LT(1). Goes from 0 to numtokens.
+	 *  read via {@code LT(1)}. Goes from 0 to numtokens.
      */
     protected int currentElementIndex = 0;
 
+    /**
+     * This is the {@code LT(-1)} element for the first element in {@link #data}.
+     */
     protected T prevElement;
 
     /** Track object returned by nextElement upon end of stream;
@@ -57,28 +57,34 @@ public abstract class LookaheadStream<T> extends FastQueue<T> {
     /** tracks how deep mark() calls are nested */
     protected int markDepth = 0;
 
+	@Override
     public void reset() {
         super.reset();
         currentElementIndex = 0;
         p = 0;
-        prevElement=null;        
+        prevElement = null;
     }
     
     /** Implement nextElement to supply a stream of elements to this
-     *  lookahead buffer.  Return eof upon end of the stream we're pulling from.
+     *  lookahead buffer.  Return EOF upon end of the stream we're pulling from.
+     *
+     * @see #isEOF
      */
     public abstract T nextElement();
 
     public abstract boolean isEOF(T o);
 
-    /** Get and remove first element in queue; override FastQueue.remove();
-     *  it's the same, just checks for backtracking.
+    /**
+     * Get and remove first element in queue; override
+     * {@link FastQueue#remove()}; it's the same, just checks for backtracking.
      */
+	@Override
     public T remove() {
         T o = elementAt(0);
         p++;
         // have we hit end of buffer and not backtracking?
         if ( p == data.size() && markDepth==0 ) {
+            prevElement = o;
             // if so, it's an opportunity to start filling at index 0 again
             clear(); // size goes to 0, but retains memory
         }
@@ -88,13 +94,13 @@ public abstract class LookaheadStream<T> extends FastQueue<T> {
     /** Make sure we have at least one element to remove, even if EOF */
     public void consume() {
         syncAhead(1);
-        prevElement = remove();
+        remove();
         currentElementIndex++;
     }
 
     /** Make sure we have 'need' elements from current position p. Last valid
      *  p index is data.size()-1.  p+need-1 is the data index 'need' elements
-     *  ahead.  If we need 1 element, (p+1-1)==p must be < data.size().
+     *  ahead.  If we need 1 element, (p+1-1)==p must be &lt; data.size().
      */
     protected void syncAhead(int need) {
         int n = (p+need-1) - data.size() + 1; // how many more elements we need?
@@ -110,7 +116,8 @@ public abstract class LookaheadStream<T> extends FastQueue<T> {
         }
     }
 
-    /** Size of entire stream is unknown; we only know buffer size from FastQueue */
+    /** Size of entire stream is unknown; we only know buffer size from FastQueue. */
+	@Override
     public int size() { throw new UnsupportedOperationException("streams are of unknown size"); }
 
     public T LT(int k) {
@@ -137,25 +144,65 @@ public abstract class LookaheadStream<T> extends FastQueue<T> {
 	}
 
 	public void rewind(int marker) {
-        markDepth--;
-        seek(marker); // assume marker is top
-        // release(marker); // waste of call; it does nothing in this class
-    }
+    markDepth--;
+    int delta = p - marker;
+    currentElementIndex -= delta;
+    p = marker;
+  }
 
-	public void rewind() {
-        seek(lastMarker); // rewind but do not release marker
-    }
+  public void rewind() {
+    // rewind but do not release marker
+    int delta = p - lastMarker;
+    currentElementIndex -= delta;
+    p = lastMarker;
+  }
 
-    /** Seek to a 0-indexed position within data buffer.  Can't handle
-     *  case where you seek beyond end of existing buffer.  Normally used
-     *  to seek backwards in the buffer. Does not force loading of nodes.
-     *  Doesn't see to absolute position in input stream since this stream
-     *  is unbuffered. Seeks only into our moving window of elements.
-     */
-    public void seek(int index) { p = index; }
+	/**
+	 * Seek to a 0-indexed absolute token index. Normally used to seek backwards
+	 * in the buffer. Does not force loading of nodes.
+	 * <p>
+	 * To preserve backward compatibility, this method allows seeking past the
+	 * end of the currently buffered data. In this case, the input pointer will
+	 * be moved but the data will only actually be loaded upon the next call to
+	 * {@link #consume} or {@link #LT} for {@code k>0}.</p>
+	 *
+	 * @throws IllegalArgumentException if {@code index} is less than 0
+	 * @throws UnsupportedOperationException if {@code index} lies before the
+	 * beginning of the moving window buffer
+	 * ({@code index < }{@link #currentElementIndex currentElementIndex}<code> - </code>{@link #p p}).
+	 */
+    public void seek(int index) {
+        if (index < 0) {
+            throw new IllegalArgumentException("can't seek before the beginning of the input");
+        }
+
+        int delta = currentElementIndex - index;
+        if (p - delta < 0) {
+            throw new UnsupportedOperationException("can't seek before the beginning of this stream's buffer");
+        }
+
+        p -= delta;
+        currentElementIndex = index;
+    }
 
     protected T LB(int k) {
-        if ( k==1 ) return prevElement;
-        throw new NoSuchElementException("can't look backwards more than one token in this stream");
+        assert k > 0;
+
+        int index = p - k;
+        if (index == -1) {
+            return prevElement;
+        }
+
+        // if k>0 then we know index < data.size(). avoid the double-check for
+        // performance.
+        if (index >= 0 /*&& index < data.size()*/) {
+            return data.get(index);
+        }
+
+        if (index < -1) {
+            throw new UnsupportedOperationException("can't look more than one token before the beginning of this stream's buffer");
+        }
+
+        throw new UnsupportedOperationException("can't look past the end of this stream's buffer using LB(int)");
     }
 }

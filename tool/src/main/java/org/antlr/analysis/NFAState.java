@@ -47,7 +47,7 @@ public class NFAState extends State {
 	int numTransitions = 0;
 	public Transition[] transition = new Transition[MAX_TRANSITIONS];
 
-	/** For o-A->o type NFA tranitions, record the label that leads to this
+	/** For o-A-&gt;o type NFA tranitions, record the label that leads to this
 	 *  state.  Useful for creating rich error messages when we find
 	 *  insufficiently (with preds) covered states.
 	 */
@@ -73,7 +73,7 @@ public class NFAState extends State {
 	 *  the DFA will always report alt n+1 as the exit branch for n real
 	 *  alts, so I need to translate that depending on the decision state.
 	 *
-	 *  If decisionNumber>0 then this var tells you what kind of decision
+	 *  If decisionNumber&gt;0 then this var tells you what kind of decision
 	 *  state it is.
 	 */
 	public int decisionStateType;
@@ -109,10 +109,12 @@ public class NFAState extends State {
 		this.nfa = nfa;
 	}
 
+	@Override
 	public int getNumberOfTransitions() {
 		return numTransitions;
 	}
 
+	@Override
 	public void addTransition(Transition e) {
 		if ( e==null ) {
 			throw new IllegalArgumentException("You can't add a null transition");			
@@ -147,6 +149,7 @@ public class NFAState extends State {
 		numTransitions = 1;
 	}
 
+	@Override
 	public Transition transition(int i) {
 		return transition[i];
 	}
@@ -251,6 +254,7 @@ public class NFAState extends State {
 		return decisionStateType>0;
 	}
 
+	@Override
 	public String toString() {
 		return String.valueOf(stateNumber);
 	}

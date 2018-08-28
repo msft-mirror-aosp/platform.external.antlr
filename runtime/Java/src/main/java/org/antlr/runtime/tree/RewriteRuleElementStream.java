@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** A generic list of elements tracked in an alternative to be used in
- *  a -> rewrite rule.  We need to subclass to fill in the next() method,
+ *  a -&gt; rewrite rule.  We need to subclass to fill in the next() method,
  *  which returns either an AST node wrapped around a token payload or
  *  an existing subtree.
  *
@@ -53,7 +53,7 @@ public abstract class RewriteRuleElementStream {
 	protected Object singleElement;
 
 	/** The list of tokens or subtrees we are tracking */
-	protected List elements;
+	protected List<Object> elements;
 
 	/** Once a node / subtree has been used in a stream, it must be dup'd
 	 *  from then on.  Streams are reset after subrules so that the streams
@@ -80,6 +80,7 @@ public abstract class RewriteRuleElementStream {
 	}
 
 	/** Create a stream with one element */
+	@SuppressWarnings("OverridableMethodCallInConstructor")
 	public RewriteRuleElementStream(TreeAdaptor adaptor,
 									String elementDescription,
 									Object oneElement)
@@ -91,7 +92,7 @@ public abstract class RewriteRuleElementStream {
 	/** Create a stream, but feed off an existing list */
 	public RewriteRuleElementStream(TreeAdaptor adaptor,
 									String elementDescription,
-									List elements)
+									List<Object> elements)
 	{
 		this(adaptor, elementDescription);
 		this.singleElement = null;
@@ -122,7 +123,7 @@ public abstract class RewriteRuleElementStream {
 			return;
 		}
 		// adding 2nd element, move to list
-		elements = new ArrayList(5);
+		elements = new ArrayList<Object>(5);
 		elements.add(singleElement);
 		singleElement = null;
 		elements.add(el);
@@ -147,8 +148,8 @@ public abstract class RewriteRuleElementStream {
 
 	/** do the work of getting the next element, making sure that it's
 	 *  a tree node or subtree.  Deal with the optimization of single-
-	 *  element list versus list of size > 1.  Throw an exception
-	 *  if the stream is empty or we're out of elements and size>1.
+	 *  element list versus list of size &gt; 1.  Throw an exception
+	 *  if the stream is empty or we're out of elements and size&gt;1.
 	 *  protected so you can override in a subclass if necessary.
 	 */
 	protected Object _next() {

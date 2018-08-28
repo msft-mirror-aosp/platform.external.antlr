@@ -42,7 +42,7 @@ public class LeftRecursiveRuleAnalyzer extends LeftRecursiveRuleWalker {
 
 	public void loadPrecRuleTemplates() {
 		recRuleTemplates =
-			new STGroupFile(CodeGenerator.classpathTemplateRootDirectoryName+
+			new ToolSTGroupFile(CodeGenerator.classpathTemplateRootDirectoryName+
 							"/LeftRecursiveRules.stg");
 		if ( !recRuleTemplates.isDefined("recRuleName") ) {
 			ErrorManager.error(ErrorManager.MSG_MISSING_CODE_GEN_TEMPLATES,
@@ -108,7 +108,7 @@ public class LeftRecursiveRuleAnalyzer extends LeftRecursiveRuleWalker {
 		//System.out.println("binaryAlt " + alt + ": " + altText + ", rewrite=" + rewriteText);
 	}
 
-	/** Convert e ? e : e  ->  ? e : e_[nextPrec] */
+	/** Convert e ? e : e  &rarr;  ? e : e_[nextPrec] */
 	@Override
 	public void ternaryAlt(GrammarAST altTree, GrammarAST rewriteTree, int alt) {
 		altTree = GrammarAST.dupTree(altTree);
@@ -222,8 +222,9 @@ public class LeftRecursiveRuleAnalyzer extends LeftRecursiveRuleWalker {
 		opPrecRuleAlts.putAll(binaryAlts);
 		opPrecRuleAlts.putAll(ternaryAlts);
 		opPrecRuleAlts.putAll(suffixAlts);
-		for (int alt : opPrecRuleAlts.keySet()) {
-			String altText = opPrecRuleAlts.get(alt);
+		for (Map.Entry<Integer, String> entry : opPrecRuleAlts.entrySet()) {
+			int alt = entry.getKey();
+			String altText = entry.getValue();
 			ST altST = recRuleTemplates.getInstanceOf("recRuleAlt");
 			ST predST =
 				generator.getTemplates().getInstanceOf("recRuleAltPredicate");
