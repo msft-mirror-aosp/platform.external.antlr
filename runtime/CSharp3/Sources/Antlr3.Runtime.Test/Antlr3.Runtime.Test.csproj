@@ -13,10 +13,6 @@
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
-    <SccProjectName>SAK</SccProjectName>
-    <SccLocalPath>SAK</SccLocalPath>
-    <SccAuxPath>SAK</SccAuxPath>
-    <SccProvider>SAK</SccProvider>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -41,14 +37,10 @@
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
-    <Reference Include="vjslib" />
+    <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Composition\Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\..\antlrcs\main\Antlr3.StringTemplate\Antlr3.StringTemplate.csproj">
+    <ProjectReference Include="..\..\..\..\..\..\Antlr3.StringTemplate\Antlr3.StringTemplate.csproj">
       <Project>{B5910BE2-DE21-4AA9-95C1-486F42B9E794}</Project>
       <Name>Antlr3.StringTemplate</Name>
     </ProjectReference>
@@ -66,11 +58,37 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Antlr3 Include="SimpleExpression.g3">
-      <Generator>MSBuild:Compile</Generator>
+    <Antlr3 Include="SimpleExpression.g3" />
+    <Antlr3 Include="FastSimpleExpression.g3" />
+    <None Include="JavaCompat\Expr.g3" />
+    <Antlr3 Include="BuildOptions\DebugGrammar.g3">
+      <!--<GrammarOptions>-debug</GrammarOptions>-->
     </Antlr3>
+    <Antlr3 Include="BuildOptions\DebugTreeGrammar.g3">
+      <!--<GrammarOptions>-debug</GrammarOptions>-->
+    </Antlr3>
+    <Antlr3 Include="StringTemplateOutput.g3" />
+    <Antlr3 Include="TestActionFeatures.g3" />
+    <Antlr3 Include="SemanticPredicateReduction.g3" />
+    <Antlr3 Include="Composition\Reduce.g3" />
+    <Antlr3 Include="Composition\Simplify.g3" />
+    <Antlr3 Include="Composition\VecMath.g3" />
+    <AntlrAbstractGrammar Include="Composition\VecMath_Lexer.g3">
+      <Generator>MSBuild:Compile</Generator>
+    </AntlrAbstractGrammar>
+    <AntlrAbstractGrammar Include="Composition\VecMath_Parser.g3">
+      <Generator>MSBuild:Compile</Generator>
+    </AntlrAbstractGrammar>
+    <Antlr3 Include="PreprocessorLexer.g3" />
+    <Antlr3 Include="SynpredTreeParser.g3" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Composition\Program.cs" />
+    <Compile Include="PreprocessorLexer.g3.cs">
+      <DependentUpon>PreprocessorLexer.g3</DependentUpon>
+    </Compile>
+    <Compile Include="PreprocessorTests.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SemanticPredicateReduction.g3.lexer.cs">
       <DependentUpon>SemanticPredicateReduction.g3</DependentUpon>
     </Compile>
@@ -83,40 +101,18 @@
     <Compile Include="SimpleExpressionParserHelper.cs">
       <DependentUpon>SimpleExpression.g3</DependentUpon>
     </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <Antlr3 Include="FastSimpleExpression.g3">
-      <Generator>MSBuild:Compile</Generator>
-    </Antlr3>
     <Compile Include="FastSimpleExpressionLexerHelper.cs">
       <DependentUpon>FastSimpleExpression.g3</DependentUpon>
     </Compile>
     <Compile Include="FastSimpleExpressionParserHelper.cs">
       <DependentUpon>FastSimpleExpression.g3</DependentUpon>
     </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <Antlr3 Include="JavaCompat\Expr.g3">
-      <Generator>MSBuild:Compile</Generator>
-    </Antlr3>
-  </ItemGroup>
-  <ItemGroup>
-    <Antlr3 Include="BuildOptions\DebugGrammar.g3">
-      <!--<GrammarOptions>-debug</GrammarOptions>-->
-      <Generator>MSBuild:Compile</Generator>
-    </Antlr3>
     <Compile Include="BuildOptions\DebugGrammarLexerHelper.cs">
       <DependentUpon>DebugGrammar.g3</DependentUpon>
     </Compile>
     <Compile Include="BuildOptions\DebugGrammarParserHelper.cs">
       <DependentUpon>DebugGrammar.g3</DependentUpon>
     </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <Antlr3 Include="BuildOptions\DebugTreeGrammar.g3">
-      <!--<GrammarOptions>-debug</GrammarOptions>-->
-      <Generator>MSBuild:Compile</Generator>
-    </Antlr3>
     <Compile Include="BuildOptions\DebugTreeGrammarHelper.cs">
       <DependentUpon>DebugTreeGrammar.g3</DependentUpon>
     </Compile>
@@ -134,6 +130,9 @@
     </Compile>
     <Compile Include="StringTemplateOutput.g3.parser.cs">
       <DependentUpon>StringTemplateOutput.g3</DependentUpon>
+    </Compile>
+    <Compile Include="SynpredTreeParser.g3.cs">
+      <DependentUpon>SynpredTreeParser.g3</DependentUpon>
     </Compile>
     <Compile Include="TestActionFeatures.g3.lexer.cs">
       <DependentUpon>TestActionFeatures.g3</DependentUpon>
@@ -153,7 +152,6 @@
   <ItemGroup>
     <None Include="BuildOptions\ProfileGrammar.g3">
       <!--<GrammarOptions>-profile</GrammarOptions>-->
-      <Generator>MSBuild:Compile</Generator>
     </None>
     <None Include="BuildOptions\ProfileGrammarLexerHelper.cs">
       <DependentUpon>ProfileGrammar.g3</DependentUpon>
@@ -161,41 +159,24 @@
     <None Include="BuildOptions\ProfileGrammarParserHelper.cs">
       <DependentUpon>ProfileGrammar.g3</DependentUpon>
     </None>
-    <Antlr3 Include="StringTemplateOutput.g3">
-      <Generator>MSBuild:Compile</Generator>
-    </Antlr3>
-    <Antlr3 Include="TestActionFeatures.g3">
-      <Generator>MSBuild:Compile</Generator>
-    </Antlr3>
-    <Antlr3 Include="SemanticPredicateReduction.g3">
-      <Generator>MSBuild:Compile</Generator>
-    </Antlr3>
-    <Antlr3 Include="Composition\Reduce.g3" />
-    <Antlr3 Include="Composition\Simplify.g3" />
-    <Antlr3 Include="Composition\VecMath.g3" />
-    <None Include="Composition\VecMath_Lexer.g3" />
-    <None Include="Composition\VecMath_Parser.g3" />
-    <None Include="TestExpressionFeatures.g3">
-      <Generator>MSBuild:Compile</Generator>
-    </None>
+    <None Include="TestExpressionFeatures.g3" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BuildOptions\ProfileTreeGrammar.g3">
       <!--<GrammarOptions>-profile</GrammarOptions>-->
-      <Generator>MSBuild:Compile</Generator>
     </None>
     <None Include="BuildOptions\ProfileTreeGrammarHelper.cs">
       <DependentUpon>ProfileTreeGrammar.g3</DependentUpon>
     </None>
   </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <!-- Folder containing AntlrBuildTask.dll -->
-    <AntlrBuildTaskPath>$(SolutionDir)bin\Bootstrap</AntlrBuildTaskPath>
+    <AntlrBuildTaskPath>$(ProjectDir)..\..\..\..\..\..\bin\Bootstrap</AntlrBuildTaskPath>
     <!-- Path to the ANTLR Tool itself. -->
-    <AntlrToolPath>$(SolutionDir)bin\Bootstrap\Antlr3.exe</AntlrToolPath>
+    <AntlrToolPath>$(ProjectDir)..\..\..\..\..\..\bin\Bootstrap\Antlr3.exe</AntlrToolPath>
   </PropertyGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="$(ProjectDir)..\..\..\..\..\..\antlrcs\main\bin\Bootstrap\Antlr3.targets" />
+  <Import Project="$(ProjectDir)..\..\..\..\..\..\bin\Bootstrap\Antlr3.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

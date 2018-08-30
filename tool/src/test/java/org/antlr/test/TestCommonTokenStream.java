@@ -33,6 +33,8 @@ import org.antlr.tool.Grammar;
 import org.antlr.tool.Interpreter;
 import org.junit.Test;
 
+import static org.junit.Assert.*;
+
 /** This actually tests new (12/4/09) buffered but on-demand fetching stream */
 public class TestCommonTokenStream extends BaseTest {
     @Test public void testFirstToken() throws Exception {
@@ -191,9 +193,11 @@ public class TestCommonTokenStream extends BaseTest {
                     tokens[6].setChannel(Lexer.HIDDEN);
                     tokens[8].setChannel(Lexer.HIDDEN);
                 }
+			@Override
                 public Token nextToken() {
                     return tokens[i++];
                 }
+			@Override
                 public String getSourceName() { return "test"; }
             };
 

@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.antlr</groupId>
     <artifactId>antlr</artifactId>
     <packaging>jar</packaging>
-    <name>ANTLR Grammar Tool v 3.4</name>
-    <url>http://antlr.org</url>
-
+    <name>ANTLR 3 Tool</name>
+    <description>The ANTLR 3 tool.</description>
 
   <!--
 
@@ -18,31 +16,10 @@
     <parent>
         <groupId>org.antlr</groupId>
         <artifactId>antlr-master</artifactId>
-        <version>3.4</version>
+        <version>3.5.2</version>
     </parent>
-    
-    <profiles>
-        <profile>
-            <id>uber</id>
-            <activation>
-                <property>
-                    <name>uber</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <dependencies>
-                <dependency>
-                    <groupId>org.antlr</groupId>
-                    <artifactId>gunit</artifactId>
-                    <version>${project.version}</version>
-                    <scope>runtime</scope>
-                </dependency>
-            </dependencies>
-        </profile>
-    </profiles>
-    
+
     <dependencies>
-        
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr-runtime</artifactId>
@@ -53,17 +30,22 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.8.2</version>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>ST4</artifactId>
-            <version>4.0.4</version>
             <scope>compile</scope>
         </dependency>
-            
+
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>stringtemplate</artifactId>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+
     </dependencies>
   <!--
 
@@ -80,14 +62,12 @@
 
     <build>
 
-        <defaultGoal>install</defaultGoal>
-
         <plugins>
 
             <plugin>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr3-maven-plugin</artifactId>
-                <version>3.3</version>
+                <version>3.5</version>
                 <configuration>
                     <libDirectory>target/generated-sources/antlr/org/antlr/grammar/v3</libDirectory>
                 </configuration>
@@ -98,21 +78,11 @@
                         </goals>
                     </execution>
                 </executions>
+
             </plugin>
 
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
-                <configuration>
-                    <source>1.6</source>
-                    <target>jsr14</target>
-                    <sourceDirectory>src</sourceDirectory>
-                </configuration>
-            </plugin>
-
-
-            
         </plugins>
+
 
     </build>
 </project>

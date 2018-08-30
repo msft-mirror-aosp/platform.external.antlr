@@ -47,6 +47,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.antlr.runtime.tree.TreeParser;
 
 public class gUnitExecutor implements ITestSuite {
 	public GrammarInfo grammarInfo;
@@ -103,7 +105,7 @@ public class gUnitExecutor implements ITestSuite {
 		return grammarClassLoader;
 	}
 
-	protected final Class classForName(String name) throws ClassNotFoundException {
+	protected final Class<?> classForName(String name) throws ClassNotFoundException {
 		return getGrammarClassLoader().loadClass( name );
 	}
 
@@ -146,8 +148,7 @@ public class gUnitExecutor implements ITestSuite {
 			}
 		}
 		catch (Exception e) {
-            e.printStackTrace();
-            System.exit(1);
+			handleUnexpectedException(e);
         }
 		return testResultST.toString();
 	}
@@ -173,11 +174,12 @@ public class gUnitExecutor implements ITestSuite {
 			String rule = ts.getRuleName();
 			String lexicalRule = ts.getLexicalRuleName();
 			String treeRule = ts.getTreeRuleName();
-			for ( gUnitTestInput input: ts.testSuites.keySet() ) {	// each rule may contain multiple tests
+			for ( Map.Entry<gUnitTestInput, AbstractTest> entry : ts.testSuites.entrySet() ) {	// each rule may contain multiple tests
+				gUnitTestInput input = entry.getKey();
 				numOfTest++;
 				// Run parser, and get the return value or stdout or stderr if there is
 				gUnitTestResult result = null;
-				AbstractTest test = ts.testSuites.get(input);
+				AbstractTest test = entry.getValue();
 				try {
 					// TODO: create a -debug option to turn on logging, which shows progress of running tests
 					//System.out.print(numOfTest + ". Running rule: " + rule + "; input: '" + input.testInput + "'");
@@ -186,7 +188,7 @@ public class gUnitExecutor implements ITestSuite {
 					//System.out.println("; Expecting " + test.getExpected() + "; Success?: " + test.getExpected().equals(test.getResult(result)));
 				} catch ( InvalidInputException e) {
 					numOfInvalidInput++;
-                    test.setHeader(rule, lexicalRule, treeRule, numOfTest, input.line);
+					test.setHeader(rule, lexicalRule, treeRule, numOfTest, input.line, input.input);
 					test.setActual(input.input);
 					invalids.add(test);
 					continue;
@@ -198,7 +200,7 @@ public class gUnitExecutor implements ITestSuite {
 
 				if (actual == null) {
 					numOfFailure++;
-                    test.setHeader(rule, lexicalRule, treeRule, numOfTest, input.line);
+					test.setHeader(rule, lexicalRule, treeRule, numOfTest, input.line, input.input);
 					test.setActual("null");
 					failures.add(test);
 					onFail(test);
@@ -211,14 +213,14 @@ public class gUnitExecutor implements ITestSuite {
 				// TODO: something with ACTIONS - at least create action test type and throw exception.
 				else if ( ts.testSuites.get(input).getType()==gUnitParser.ACTION ) {	// expected Token: ACTION
 					numOfFailure++;
-                    test.setHeader(rule, lexicalRule, treeRule, numOfTest, input.line);
+					test.setHeader(rule, lexicalRule, treeRule, numOfTest, input.line, input.input);
 					test.setActual("\t"+"{ACTION} is not supported in the grammarInfo yet...");
 					failures.add(test);
 					onFail(test);
 				}
 				else {
 					numOfFailure++;
-                    test.setHeader(rule, lexicalRule, treeRule, numOfTest, input.line);
+					test.setHeader(rule, lexicalRule, treeRule, numOfTest, input.line, input.input);
 					failures.add(test);
 					onFail(test);
 				}
@@ -229,7 +231,7 @@ public class gUnitExecutor implements ITestSuite {
 	// TODO: throw proper exceptions
 	protected gUnitTestResult runLexer(String lexerName, String testRuleName, gUnitTestInput testInput) throws Exception {
 		CharStream input;
-		Class lexer = null;
+		Class<? extends Lexer> lexer;
 		PrintStream ps = null;		// for redirecting stdout later
 		PrintStream ps2 = null;		// for redirecting stderr later
 		try {
@@ -237,13 +239,11 @@ public class gUnitExecutor implements ITestSuite {
 			input = getANTLRInputStream(testInput);
 
             /** Use Reflection to create instances of lexer and parser */
-        	lexer = classForName(lexerName);
-            Class[] lexArgTypes = new Class[]{CharStream.class};				// assign type to lexer's args
-            Constructor lexConstructor = lexer.getConstructor(lexArgTypes);
-            Object[] lexArgs = new Object[]{input};								// assign value to lexer's args
-            Object lexObj = lexConstructor.newInstance(lexArgs);				// makes new instance of lexer
+        	lexer = classForName(lexerName).asSubclass(Lexer.class);
+            Constructor<? extends Lexer> lexConstructor = lexer.getConstructor(CharStream.class);
+            Lexer lexObj = lexConstructor.newInstance(input);				// makes new instance of lexer
 
-            Method ruleName = lexer.getMethod("m"+testRuleName, new Class[0]);
+            Method ruleName = lexer.getMethod("m"+testRuleName);
 
             /** Start of I/O Redirecting */
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -255,9 +255,9 @@ public class gUnitExecutor implements ITestSuite {
             /** End of redirecting */
 
             /** Invoke lexer rule, and get the current index in CharStream */
-            ruleName.invoke(lexObj, new Object[0]);
-            Method ruleName2 = lexer.getMethod("getCharIndex", new Class[0]);
-            int currentIndex = (Integer) ruleName2.invoke(lexObj, new Object[0]);
+            ruleName.invoke(lexObj);
+            Method ruleName2 = lexer.getMethod("getCharIndex");
+            int currentIndex = (Integer) ruleName2.invoke(lexObj);
             if ( currentIndex!=input.size() ) {
             	ps2.print("extra text found, '"+input.substring(currentIndex, input.size()-1)+"'");
             }
@@ -275,17 +275,17 @@ public class gUnitExecutor implements ITestSuite {
 		} catch (IOException e) {
 			return getTestExceptionResult(e);
         } catch (ClassNotFoundException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (SecurityException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (NoSuchMethodException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (IllegalArgumentException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (InstantiationException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (IllegalAccessException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (InvocationTargetException e) {	// This exception could be caused from ANTLR Runtime Exception, e.g. MismatchedTokenException
         	return getTestExceptionResult(e);
         } finally {
@@ -305,8 +305,8 @@ public class gUnitExecutor implements ITestSuite {
 	// TODO: throw proper exceptions
 	protected gUnitTestResult runParser(String parserName, String lexerName, String testRuleName, gUnitTestInput testInput) throws Exception {
 		CharStream input;
-		Class lexer = null;
-		Class parser = null;
+		Class<? extends Lexer> lexer;
+		Class<? extends Parser> parser;
 		PrintStream ps = null;		// for redirecting stdout later
 		PrintStream ps2 = null;		// for redirecting stderr later
 		try {
@@ -314,25 +314,20 @@ public class gUnitExecutor implements ITestSuite {
 			input = getANTLRInputStream(testInput);
 
             /** Use Reflection to create instances of lexer and parser */
-        	lexer = classForName(lexerName);
-            Class[] lexArgTypes = new Class[]{CharStream.class};				// assign type to lexer's args
-            Constructor lexConstructor = lexer.getConstructor(lexArgTypes);
-            Object[] lexArgs = new Object[]{input};								// assign value to lexer's args
-            Object lexObj = lexConstructor.newInstance(lexArgs);				// makes new instance of lexer
+        	lexer = classForName(lexerName).asSubclass(Lexer.class);
+            Constructor<? extends Lexer> lexConstructor = lexer.getConstructor(CharStream.class);
+            Lexer lexObj = lexConstructor.newInstance(input);				// makes new instance of lexer
 
-            CommonTokenStream tokens = new CommonTokenStream((Lexer) lexObj);
+            CommonTokenStream tokens = new CommonTokenStream(lexObj);
 
-            parser = classForName(parserName);
-            Class[] parArgTypes = new Class[]{TokenStream.class};				// assign type to parser's args
-            Constructor parConstructor = parser.getConstructor(parArgTypes);
-            Object[] parArgs = new Object[]{tokens};							// assign value to parser's args
-            Object parObj = parConstructor.newInstance(parArgs);				// makes new instance of parser
+            parser = classForName(parserName).asSubclass(Parser.class);
+            Constructor<? extends Parser> parConstructor = parser.getConstructor(TokenStream.class);
+            Parser parObj = parConstructor.newInstance(tokens);				// makes new instance of parser
 
             // set up customized tree adaptor if necessary
             if ( grammarInfo.getAdaptor()!=null ) {
-            	parArgTypes = new Class[]{TreeAdaptor.class};
-            	Method _setTreeAdaptor = parser.getMethod("setTreeAdaptor", parArgTypes);
-            	Class _treeAdaptor = classForName(grammarInfo.getAdaptor());
+            	Method _setTreeAdaptor = parser.getMethod("setTreeAdaptor", TreeAdaptor.class);
+            	Class<? extends TreeAdaptor> _treeAdaptor = classForName(grammarInfo.getAdaptor()).asSubclass(TreeAdaptor.class);
             	_setTreeAdaptor.invoke(parObj, _treeAdaptor.newInstance());
             }
 
@@ -355,7 +350,7 @@ public class gUnitExecutor implements ITestSuite {
             if ( ruleReturn!=null ) {
                 if ( ruleReturn.getClass().toString().indexOf(testRuleName+"_return")>0 ) {
                 	try {	// NullPointerException may happen here...
-                		Class _return = classForName(parserName+"$"+testRuleName+"_return");
+                		Class<?> _return = classForName(parserName+"$"+testRuleName+"_return");
                 		Method[] methods = _return.getDeclaredMethods();
                 		for(Method method : methods) {
 			                if ( method.getName().equals("getTree") ) {
@@ -376,11 +371,7 @@ public class gUnitExecutor implements ITestSuite {
                 }
             }
 
-            /** Invalid input */
-            if ( tokens.index()!=tokens.size()-1 ) {
-            	//throw new InvalidInputException();
-            	ps2.print("Invalid input");
-            }
+            checkForValidInput(tokens, ps2);
 
 			if ( err.toString().length()>0 ) {
 				gUnitTestResult testResult = new gUnitTestResult(false, err.toString());
@@ -407,17 +398,17 @@ public class gUnitExecutor implements ITestSuite {
 		} catch (IOException e) {
 			return getTestExceptionResult(e);
 		} catch (ClassNotFoundException e) {
-        	e.printStackTrace(); System.exit(1);
+			handleUnexpectedException( e );
         } catch (SecurityException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (NoSuchMethodException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (IllegalArgumentException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (InstantiationException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (IllegalAccessException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (InvocationTargetException e) {	// This exception could be caused from ANTLR Runtime Exception, e.g. MismatchedTokenException
         	return getTestExceptionResult(e);
         } finally {
@@ -437,9 +428,9 @@ public class gUnitExecutor implements ITestSuite {
 	protected gUnitTestResult runTreeParser(String parserName, String lexerName, String testRuleName, String testTreeRuleName, gUnitTestInput testInput) throws Exception {
 		CharStream input;
 		String treeParserPath;
-		Class lexer = null;
-		Class parser = null;
-		Class treeParser = null;
+		Class<? extends Lexer> lexer;
+		Class<? extends Parser> parser;
+		Class<? extends TreeParser> treeParser;
 		PrintStream ps = null;		// for redirecting stdout later
 		PrintStream ps2 = null;		// for redirecting stderr later
 		try {
@@ -455,27 +446,22 @@ public class gUnitExecutor implements ITestSuite {
 			}
 
             /** Use Reflection to create instances of lexer and parser */
-        	lexer = classForName(lexerName);
-            Class[] lexArgTypes = new Class[]{CharStream.class};				// assign type to lexer's args
-            Constructor lexConstructor = lexer.getConstructor(lexArgTypes);
-            Object[] lexArgs = new Object[]{input};								// assign value to lexer's args
-            Object lexObj = lexConstructor.newInstance(lexArgs);				// makes new instance of lexer
+        	lexer = classForName(lexerName).asSubclass(Lexer.class);
+            Constructor<? extends Lexer> lexConstructor = lexer.getConstructor(CharStream.class);
+            Lexer lexObj = lexConstructor.newInstance(input);				// makes new instance of lexer
 
-            CommonTokenStream tokens = new CommonTokenStream((Lexer) lexObj);
+            CommonTokenStream tokens = new CommonTokenStream(lexObj);
 
-            parser = classForName(parserName);
-            Class[] parArgTypes = new Class[]{TokenStream.class};				// assign type to parser's args
-            Constructor parConstructor = parser.getConstructor(parArgTypes);
-            Object[] parArgs = new Object[]{tokens};							// assign value to parser's args
-            Object parObj = parConstructor.newInstance(parArgs);				// makes new instance of parser
+            parser = classForName(parserName).asSubclass(Parser.class);
+            Constructor<? extends Parser> parConstructor = parser.getConstructor(TokenStream.class);
+            Parser parObj = parConstructor.newInstance(tokens);				// makes new instance of parser
 
             // set up customized tree adaptor if necessary
             TreeAdaptor customTreeAdaptor = null;
             if ( grammarInfo.getAdaptor()!=null ) {
-            	parArgTypes = new Class[]{TreeAdaptor.class};
-            	Method _setTreeAdaptor = parser.getMethod("setTreeAdaptor", parArgTypes);
-            	Class _treeAdaptor = classForName(grammarInfo.getAdaptor());
-            	customTreeAdaptor = (TreeAdaptor) _treeAdaptor.newInstance();
+            	Method _setTreeAdaptor = parser.getMethod("setTreeAdaptor", TreeAdaptor.class);
+            	Class<? extends TreeAdaptor> _treeAdaptor = classForName(grammarInfo.getAdaptor()).asSubclass(TreeAdaptor.class);
+            	customTreeAdaptor = _treeAdaptor.newInstance();
             	_setTreeAdaptor.invoke(parObj, customTreeAdaptor);
             }
 
@@ -493,7 +479,7 @@ public class gUnitExecutor implements ITestSuite {
             /** Invoke grammar rule, and get the return value */
             Object ruleReturn = ruleName.invoke(parObj);
 
-            Class _return = classForName(parserName+"$"+testRuleName+"_return");
+            Class<?> _return = classForName(parserName+"$"+testRuleName+"_return");
         	Method returnName = _return.getMethod("getTree");
         	CommonTree tree = (CommonTree) returnName.invoke(ruleReturn);
 
@@ -508,11 +494,9 @@ public class gUnitExecutor implements ITestSuite {
         	// AST nodes have payload that point into token stream
         	nodes.setTokenStream(tokens);
         	// Create a tree walker attached to the nodes stream
-        	treeParser = classForName(treeParserPath);
-            Class[] treeParArgTypes = new Class[]{TreeNodeStream.class};		// assign type to tree parser's args
-            Constructor treeParConstructor = treeParser.getConstructor(treeParArgTypes);
-            Object[] treeParArgs = new Object[]{nodes};							// assign value to tree parser's args
-            Object treeParObj = treeParConstructor.newInstance(treeParArgs);	// makes new instance of tree parser
+        	treeParser = classForName(treeParserPath).asSubclass(TreeParser.class);
+            Constructor<? extends TreeParser> treeParConstructor = treeParser.getConstructor(TreeNodeStream.class);
+            TreeParser treeParObj = treeParConstructor.newInstance(nodes);	// makes new instance of tree parser
         	// Invoke the tree rule, and store the return value if there is
             Method treeRuleName = treeParser.getMethod(testTreeRuleName);
             Object treeRuleReturn = treeRuleName.invoke(treeParObj);
@@ -523,7 +507,7 @@ public class gUnitExecutor implements ITestSuite {
             if ( treeRuleReturn!=null ) {
                 if ( treeRuleReturn.getClass().toString().indexOf(testTreeRuleName+"_return")>0 ) {
                 	try {	// NullPointerException may happen here...
-                		Class _treeReturn = classForName(treeParserPath+"$"+testTreeRuleName+"_return");
+                		Class<?> _treeReturn = classForName(treeParserPath+"$"+testTreeRuleName+"_return");
                 		Method[] methods = _treeReturn.getDeclaredMethods();
 			            for(Method method : methods) {
 			                if ( method.getName().equals("getTree") ) {
@@ -544,11 +528,7 @@ public class gUnitExecutor implements ITestSuite {
                 }
             }
 
-            /** Invalid input */
-            if ( tokens.index()!=tokens.size()-1 ) {
-            	//throw new InvalidInputException();
-            	ps2.print("Invalid input");
-            }
+			checkForValidInput( tokens, ps2 );
 
 			if ( err.toString().length()>0 ) {
 				gUnitTestResult testResult = new gUnitTestResult(false, err.toString());
@@ -576,17 +556,17 @@ public class gUnitExecutor implements ITestSuite {
 		} catch (IOException e) {
 			return getTestExceptionResult(e);
 		} catch (ClassNotFoundException e) {
-        	e.printStackTrace(); System.exit(1);
+			handleUnexpectedException( e );
         } catch (SecurityException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (NoSuchMethodException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (IllegalArgumentException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (InstantiationException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (IllegalAccessException e) {
-        	e.printStackTrace(); System.exit(1);
+        	handleUnexpectedException( e );
         } catch (InvocationTargetException e) {	// note: This exception could be caused from ANTLR Runtime Exception...
         	return getTestExceptionResult(e);
         } finally {
@@ -641,6 +621,23 @@ public class gUnitExecutor implements ITestSuite {
     	return testResult;
 	}
 
+	/**
+	 * Verify the input has been properly consumed
+	 */
+	protected void checkForValidInput(CommonTokenStream tokens, PrintStream ps2) {
+		if ( tokens.index() != tokens.size() - 1 ) {
+			//At this point we need to check for redundant EOF tokens
+			//which might have been added by the Parser:
+			List<? extends Token> endingTokens = tokens.getTokens(tokens.index(), tokens.size() -1);
+			for (Token endToken : endingTokens) {
+				if (! "<EOF>".equals(endToken.getText())) {
+					//writing to ps2 will mark the test as failed:
+					ps2.print( "Invalid input" );
+					return;
+				}
+			}
+		}
+	}
 
     public void onPass(ITestCase passTest) {
 
@@ -649,5 +646,10 @@ public class gUnitExecutor implements ITestSuite {
     public void onFail(ITestCase failTest) {
 
     }
+
+	protected void handleUnexpectedException(Exception e) {
+		e.printStackTrace();
+		System.exit(1);
+	}
 
 }

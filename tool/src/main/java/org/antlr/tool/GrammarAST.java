@@ -31,15 +31,11 @@ import org.antlr.analysis.DFA;
 import org.antlr.analysis.NFAState;
 import org.antlr.grammar.v3.ANTLRParser;
 import org.antlr.misc.IntSet;
-import org.antlr.misc.Interval;
 import org.antlr.runtime.CommonToken;
 import org.antlr.runtime.Token;
-import org.antlr.runtime.TokenSource;
 import org.antlr.runtime.tree.CommonTree;
 import org.antlr.runtime.tree.Tree;
-import org.antlr.runtime.tree.TreeAdaptor;
 import org.stringtemplate.v4.ST;
-import org.omg.PortableInterceptor.ORBInitInfoPackage.DuplicateName;
 
 import java.util.*;
 
@@ -128,7 +124,6 @@ public class GrammarAST extends CommonTree {
 
     /**
      *
-     * @return
      */
     public Map<String, Object> getBlockOptions() {
         return blockOptions;
@@ -142,12 +137,14 @@ public class GrammarAST extends CommonTree {
         this.blockOptions = blockOptions;
     }
 
-	public GrammarAST() {;}
+	public GrammarAST() {}
 
+	@SuppressWarnings("OverridableMethodCallInConstructor")
 	public GrammarAST(int t, String txt) {
 		initialize(t,txt);
 	}
 
+	@SuppressWarnings("OverridableMethodCallInConstructor")
 	public GrammarAST(Token token) {
 		initialize(token);
 	}
@@ -197,7 +194,7 @@ public class GrammarAST extends CommonTree {
 	 */
 	public String setBlockOption(Grammar grammar, String key, Object value) {
 		if ( blockOptions == null ) {
-			blockOptions = new HashMap();
+			blockOptions = new HashMap<String, Object>();
 		}
 		return setOption(blockOptions, Grammar.legalBlockOptions, grammar, key, value);
 	}
@@ -209,7 +206,7 @@ public class GrammarAST extends CommonTree {
 		return setOption(terminalOptions, Grammar.legalTokenOptions, grammar, key, value);
 	}
 
-	public String setOption(Map options, Set legalOptions, Grammar grammar, String key, Object value) {
+	public String setOption(Map<String, Object> options, Set<String> legalOptions, Grammar grammar, String key, Object value) {
 		if ( !legalOptions.contains(key) ) {
 			ErrorManager.grammarError(ErrorManager.MSG_ILLEGAL_OPTION,
 									  grammar,
@@ -241,12 +238,12 @@ public class GrammarAST extends CommonTree {
 		return value;
 	}
 
-    public void setOptions(Grammar grammar, Map options) {
+    public void setOptions(Grammar grammar, Map<String, Object> options) {
 		if ( options==null ) {
 			this.blockOptions = null;
 			return;
 		}
-		String[] keys = (String[])options.keySet().toArray(new String[options.size()]);
+		String[] keys = options.keySet().toArray(new String[options.size()]);
 		for (String optionName : keys) {
 			String stored= setBlockOption(grammar, optionName, options.get(optionName));
 			if ( stored==null ) {
@@ -344,9 +341,13 @@ public class GrammarAST extends CommonTree {
         return (GrammarAST)parent.getChild(parent.getChildCount() - 1);
     }
 
-
     public GrammarAST[] getChildrenAsArray() {
-        return (GrammarAST[])getChildren().toArray(new GrammarAST[getChildCount()]);
+		List<? extends Object> children = getChildren();
+		if (children == null) {
+			return new GrammarAST[0];
+		}
+
+        return children.toArray(new GrammarAST[children.size()]);
     }
 
     private static final GrammarAST DescendantDownNode = new GrammarAST(Token.DOWN, "DOWN");
@@ -536,8 +537,13 @@ public class GrammarAST extends CommonTree {
 		}
 	}
 
-	String toStringList() {
-		return "";
+	public String toStringList() {
+		String result = toStringTree();
+		if (this.getNextSibling() != null) {
+			result += ' ' + getNextSibling().toStringList();
+		}
+
+		return result;
 	}
 
 	/** Track start/stop token for subtree root created for a rule.

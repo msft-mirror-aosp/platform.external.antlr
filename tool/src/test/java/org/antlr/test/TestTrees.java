@@ -35,6 +35,8 @@ import org.antlr.runtime.tree.Tree;
 import org.antlr.runtime.tree.TreeAdaptor;
 import org.junit.Test;
 
+import static org.junit.Assert.*;
+
 public class TestTrees extends BaseTest {
 	TreeAdaptor adaptor = new CommonTreeAdaptor();
 	protected boolean debug = false;
@@ -44,6 +46,7 @@ public class TestTrees extends BaseTest {
 		public V(Token t) { this.token = t;}
 		public V(int ttype, int x) { this.x=x; token=new CommonToken(ttype); }
 		public V(int ttype, Token t, int x) { token=t; this.x=x;}
+		@Override
 		public String toString() { return (token!=null?token.getText():"")+"<V>";}
 	}
 
@@ -235,17 +238,11 @@ public class TestTrees extends BaseTest {
 
 	// Test replaceChildren
 
-	@Test public void testReplaceWithNoChildren() throws Exception {
+	@Test(expected = IllegalArgumentException.class)
+	public void testReplaceWithNoChildren() throws Exception {
 		CommonTree t = new CommonTree(new CommonToken(101));
 		CommonTree newChild = new CommonTree(new CommonToken(5));
-		boolean error = false;
-		try {
-			t.replaceChildren(0, 0, newChild);
-		}
-		catch (IllegalArgumentException iae) {
-			error = true;
-		}
-		assertTrue(error);
+		t.replaceChildren(0, 0, newChild);
 	}
 
 	@Test public void testReplaceWithOneChildren() throws Exception {

@@ -32,7 +32,7 @@ import org.junit.Test;
 
 import java.util.NoSuchElementException;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public class TestFastQueue {
     @Test public void testQueueNoRemove() throws Exception {
@@ -54,7 +54,7 @@ public class TestFastQueue {
         q.add("c");
         q.add("d");
         q.add("e");
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         while ( q.size()>0 ) {
             String o = q.remove();
             buf.append(o);
@@ -67,7 +67,7 @@ public class TestFastQueue {
     }
 
     @Test public void testQueueThenRemoveOneByOne() throws Exception {
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         FastQueue<String> q = new FastQueue<String>();
         q.add("a");
         buf.append(q.remove());
