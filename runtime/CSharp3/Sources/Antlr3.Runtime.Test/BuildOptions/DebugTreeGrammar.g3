@@ -1,10 +1,10 @@
 /*
- * [The "BSD licence"]
- * Copyright (c) 2005-2008 Terence Parr
+ * [The "BSD license"]
+ * Copyright (c) 2011 Terence Parr
  * All rights reserved.
  *
  * Conversion to C#:
- * Copyright (c) 2008-2009 Sam Harwell, Pixel Mine, Inc.
+ * Copyright (c) 2011 Sam Harwell, Pixel Mine, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,10 +44,12 @@ options
 {
 //import java.util.Map;
 //import java.util.HashMap;
-using BigInteger = java.math.BigInteger;
+using BigInteger = System.Numerics.BigInteger;
 using Console = System.Console;
 }
 // END:members
+
+@namespace{Antlr3.Runtime.Test.BuildOptions}
 
 // START:rules
 prog:   stat*
@@ -61,13 +63,13 @@ stat:   expr                       { string result = $expr.value.ToString();
     ;
 
 expr returns [BigInteger value]
-    :   ^('+' a=expr b=expr)       { $value = $a.value.add($b.value); }
-    |   ^('-' a=expr b=expr)       { $value = $a.value.subtract($b.value); }
-    |   ^('*' a=expr b=expr)       { $value = $a.value.multiply($b.value); }
-    |   ^('/' a=expr b=expr)       { $value = $a.value.divide($b.value); }
-    |   ^('%' a=expr b=expr)       { $value = $a.value.remainder($b.value); }
+    :   ^('+' a=expr b=expr)       { $value = $a.value + $b.value; }
+    |   ^('-' a=expr b=expr)       { $value = $a.value - $b.value; }
+    |   ^('*' a=expr b=expr)       { $value = $a.value * $b.value; }
+    |   ^('/' a=expr b=expr)       { $value = $a.value / $b.value; }
+    |   ^('%' a=expr b=expr)       { $value = $a.value \% $b.value; }
     |   ID                         { $value = getValue($ID.text); }
-    |   INT                        { $value = new BigInteger($INT.text); }
+    |   INT                        { $value = BigInteger.Parse($INT.text); }
     |   call                       { $value = $call.value; }
     ;
 

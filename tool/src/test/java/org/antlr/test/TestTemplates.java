@@ -40,6 +40,8 @@ import org.antlr.tool.GrammarSemanticsMessage;
 import org.antlr.tool.Message;
 import org.junit.Test;
 
+import static org.junit.Assert.*;
+
 /** Test templates in actions; %... shorthands */
 public class TestTemplates extends BaseTest {
 	private static final String LINE_SEP = System.getProperty("line.separator");
@@ -353,7 +355,7 @@ public class TestTemplates extends BaseTest {
 		*/
 		Message foundMsg = null;
 		for (int i = 0; i < equeue.errors.size(); i++) {
-			Message m = (Message)equeue.errors.get(i);
+			Message m = equeue.errors.get(i);
 			if (m.msgID==expectedMessage.msgID ) {
 				foundMsg = m;
 			}
@@ -369,6 +371,6 @@ public class TestTemplates extends BaseTest {
 
 	// S U P P O R T
 	private void assertNoErrors(ErrorQueue equeue) {
-		assertTrue("unexpected errors: "+equeue, equeue.errors.size()==0);
+		assertTrue("unexpected errors: "+equeue, equeue.errors.isEmpty());
 	}
 }

@@ -67,8 +67,8 @@ namespace Antlr.Runtime.Tree
             try
             {
                 // share TreeParser object but not parsing-related state
-                state = new RecognizerSharedState();
-                input = new CommonTreeNodeStream( originalAdaptor, t );
+                SetState(new RecognizerSharedState());
+                SetTreeNodeStream(new CommonTreeNodeStream(originalAdaptor, t));
                 ( (CommonTreeNodeStream)input ).TokenStream = originalTokenStream;
                 BacktrackingLevel = 1;
                 IAstRuleReturnScope r = whichRule();
@@ -119,12 +119,12 @@ namespace Antlr.Runtime.Tree
         // methods the downup strategy uses to do the up and down rules.
         // to override, just define tree grammar rule topdown and turn on
         // filter=true.
-        public virtual IAstRuleReturnScope Topdown()
+        protected virtual IAstRuleReturnScope Topdown()
         {
             return null;
         }
 
-        public virtual IAstRuleReturnScope Bottomup()
+        protected virtual IAstRuleReturnScope Bottomup()
         {
             return null;
         }
