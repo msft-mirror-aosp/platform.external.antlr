@@ -33,10 +33,11 @@ import org.antlr.tool.Grammar;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class CTarget extends Target {
 
-    ArrayList strings = new ArrayList();
+    List<String> strings = new ArrayList<String>();
 
     @Override
     protected void genRecognizerFile(Tool tool,
@@ -194,7 +195,7 @@ public class CTarget extends Target {
             String literal) {
         int index;
         String bytes;
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
 
         buf.append("{ ");
 
@@ -294,7 +295,7 @@ public class CTarget extends Target {
         // the default size. If it is then whack it all the way up to the maximum that
         // we can sensibly get away with.
         //
-        if (CodeGenerator.MAX_ACYCLIC_DFA_STATES_INLINE == CodeGenerator.MAX_ACYCLIC_DFA_STATES_INLINE ) {
+        if (CodeGenerator.MAX_ACYCLIC_DFA_STATES_INLINE == CodeGenerator.MADSI_DEFAULT ) {
 
             CodeGenerator.MAX_ACYCLIC_DFA_STATES_INLINE = 65535;
         }

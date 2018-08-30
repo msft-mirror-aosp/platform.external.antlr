@@ -31,23 +31,21 @@ package org.antlr.tool;
 import org.antlr.runtime.SerializedGrammar;
 
 import java.io.*;
-import java.util.Stack;
 
 /** Serialize a grammar into a highly compressed form with
  *  only the info needed to recognize sentences.
  *  FORMAT:
  *
- *  file ::= $ANTLR<version:byte><grammartype:byte><name:string>;<numRules:short><rules>
- *  rule ::= R<rulename:string>;B<nalts:short><alts>.
- *  alt  ::= A<elems>;
- *  elem ::= t<tokentype:short> | r<ruleIndex:short> | -<char:uchar><char:uchar> | ~<tokentype> | w
+ *  file ::= $ANTLR&lt;version:byte&gt;&lt;grammartype:byte&gt;&lt;name:string&gt;;&lt;numRules:short&gt;&lt;rules&gt;
+ *  rule ::= R&lt;rulename:string&gt;;B&lt;nalts:short&gt;&lt;alts&gt;.
+ *  alt  ::= A&lt;elems&gt;;
+ *  elem ::= t&lt;tokentype:short&gt; | r&lt;ruleIndex:short&gt; | -&lt;char:uchar&gt;&lt;char:uchar&gt; | ~&lt;tokentype&gt; | w
  */
 public class GrammarSerializerFoo {
     protected DataOutputStream out;
     protected String filename;
     protected Grammar g;
 
-    protected Stack streams = new Stack();
     protected ByteArrayOutputStream altBuf;
     protected int numElementsInAlt = 0;
 

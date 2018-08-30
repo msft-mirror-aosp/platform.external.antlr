@@ -42,7 +42,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration( "" )]
 [assembly: AssemblyCompany( "Pixel Mine, Inc." )]
 [assembly: AssemblyProduct( "Antlr3.Runtime.Test" )]
-[assembly: AssemblyCopyright("Copyright © Sam Harwell 2011")]
+[assembly: AssemblyCopyright("Copyright © Sam Harwell 2013")]
 [assembly: AssemblyTrademark( "" )]
 [assembly: AssemblyCulture( "" )]
 [assembly: CLSCompliant( true )]
@@ -66,5 +66,5 @@ using System.Runtime.InteropServices;
  *      the Major or Minor version is incremented.
  *   3. Revision is the Perforce changelist number associated with the release.
  */
-[assembly: AssemblyVersion("3.3.2.8098")]
-[assembly: AssemblyFileVersion("3.3.2.8098")]
+[assembly: AssemblyVersion("3.5.0.2")]
+[assembly: AssemblyFileVersion("3.5.0.2")]

@@ -30,6 +30,8 @@ package org.antlr.test;
 import org.antlr.tool.Grammar;
 import org.junit.Test;
 
+import static org.junit.Assert.*;
+
 public class TestASTConstruction extends BaseTest {
 
     /** Public default constructor used by TestRig */
@@ -364,7 +366,7 @@ public class TestASTConstruction extends BaseTest {
 				"options { backtrack=true; }\n" +
 				"a : ({blort} 'x')* ;\n");  // bug: the synpred had nothing in it
 		String expecting =
-			"(rule synpred1_Expr ARG RET scope (BLOCK (ALT blort 'x' <end-of-alt>) <end-of-block>) <end-of-rule>)";
+			"(rule synpred1_Expr ARG RET scope (BLOCK (ALT 'x' <end-of-alt>) <end-of-block>) <end-of-rule>)";
 		String found = g.getRule("synpred1_Expr").tree.toStringTree();
 		assertEquals(expecting, found);
 	}
