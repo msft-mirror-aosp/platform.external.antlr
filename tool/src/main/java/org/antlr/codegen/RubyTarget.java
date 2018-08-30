@@ -42,8 +42,8 @@ public class RubyTarget extends Target
     /** A set of ruby keywords which are used to escape labels and method names
      *  which will cause parse errors in the ruby source
      */
-    public static final Set rubyKeywords =
-    new HashSet() {
+    public static final Set<String> rubyKeywords =
+    new HashSet<String>() {
         {
         	add( "alias" );     add( "END" );     add( "retry" );
         	add( "and" );       add( "ensure" );  add( "return" );
@@ -90,6 +90,7 @@ public class RubyTarget extends Target
     		rubyCharValueEscape['"'] = "\\\"";
     	}
 
+		@Override
         public String toString( Object o, String formatName, Locale locale ) {
 			if ( formatName==null ) {
 				return o.toString();
@@ -97,7 +98,7 @@ public class RubyTarget extends Target
 			
             String idString = o.toString();
 
-            if ( idString.isEmpty() ) return idString;
+            if ( idString.length() == 0 ) return idString;
 
             if ( formatName.equals( "snakecase" ) ) {
                 return snakecase( idString );
@@ -133,11 +134,11 @@ public class RubyTarget extends Target
          *
          * example -- aGUIWhatNot
          *   c   c+1 c+2  action
-         *   a   G        << 'a' << '_'  // a lower-upper word edge
-         *   G   U   I    << 'g'
-         *   U   I   W    << 'w'
-         *   I   W   h    << 'i' << '_'  // the last character in an acronym run of uppers
-         *   W   h        << 'w'
+         *   a   G        &lt;&lt; 'a' &lt;&lt; '_'  // a lower-upper word edge
+         *   G   U   I    &lt;&lt; 'g'
+         *   U   I   W    &lt;&lt; 'w'
+         *   I   W   h    &lt;&lt; 'i' &lt;&lt; '_'  // the last character in an acronym run of uppers
+         *   W   h        &lt;&lt; 'w'
          *   ... and so on
          */
         private String snakecase( String value ) {
@@ -148,7 +149,7 @@ public class RubyTarget extends Target
             char next;
             char peek;
 
-            if ( value.isEmpty() ) return value;
+            if ( value.length() == 0 ) return value;
             if ( l == 1 ) return value.toLowerCase();
 
             for ( int i = 0; i < cliff; i++ ) {
@@ -245,7 +246,7 @@ public class RubyTarget extends Target
             char next;
             boolean at_edge = true;
 
-            if ( value.isEmpty() ) return value;
+            if ( value.length() == 0 ) return value;
             if ( cliff == 1 ) return value.toUpperCase();
 
             for ( int i = 0; i < cliff; i++ ) {
@@ -292,7 +293,7 @@ public class RubyTarget extends Target
 
         private String subcamelcase( String value ) {
             value = camelcase( value );
-            if ( value.isEmpty() )
+            if ( value.length() == 0 )
                 return value;
             Character head = Character.toLowerCase( value.charAt( 0 ) );
             String tail = value.substring( 1 );
@@ -300,6 +301,7 @@ public class RubyTarget extends Target
         }
     }
 
+	@Override
     protected void genRecognizerFile(
     		Tool tool,
     		CodeGenerator generator,
@@ -364,6 +366,7 @@ public class RubyTarget extends Target
         generator.write( outputFileST, fileName );
     }
 
+	@Override
     public String getTargetCharLiteralFromANTLRCharLiteral(
         CodeGenerator generator,
         String literal
@@ -410,12 +413,14 @@ public class RubyTarget extends Target
         return ( "0x" + Integer.toHexString( code_point ) );
     }
 
+	@Override
     public int getMaxCharValue( CodeGenerator generator )
     {
         // Versions before 1.9 do not support unicode
         return 0xFF;
     }
 
+	@Override
     public String getTokenTypeAsTargetLabel( CodeGenerator generator, int ttype )
     {
         String name = generator.grammar.getTokenDisplayName( ttype );
@@ -426,6 +431,7 @@ public class RubyTarget extends Target
         return name;
     }
 
+	@Override
     public boolean isValidActionScope( int grammarType, String scope ) {
         if ( scope.equals( "all" ) )       {
             return true;
@@ -468,6 +474,7 @@ public class RubyTarget extends Target
         return false;
     }
 
+	@Override
     public String encodeIntAsCharEscape( final int v ) {
         final int intValue;
 

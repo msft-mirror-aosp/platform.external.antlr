@@ -32,6 +32,8 @@ import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.*;
 import org.junit.Test;
 
+import static org.junit.Assert.*;
+
 /** Test the tree node stream. */
 public class TestTreeNodeStream extends BaseTest {
 
@@ -359,7 +361,7 @@ public class TestTreeNodeStream extends BaseTest {
 
 	public String toNodesOnlyString(TreeNodeStream nodes) {
         TreeAdaptor adaptor = nodes.getTreeAdaptor();
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
         Object o = nodes.LT(1);
         int type = adaptor.getType(o);
         while ( o!=null && type!=Token.EOF ) {

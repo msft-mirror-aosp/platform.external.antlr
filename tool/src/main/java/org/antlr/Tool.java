@@ -41,8 +41,13 @@ import java.util.*;
 public class Tool {
 
     public final Properties antlrSettings = new Properties();
-    public String VERSION = "3.4";
-    //public static final String VERSION = "${project.version}";
+
+	public final String VERSION;
+	{
+		String version = Tool.class.getPackage().getImplementationVersion();
+		VERSION = version != null ? version : "3.x";
+	}
+
     public static final String UNINITIALIZED_DIR = "<unset-dir>";
     private List<String> grammarFileNames = new ArrayList<String>();
     private boolean generate_NFA_dot = false;
@@ -83,7 +88,7 @@ public class Tool {
     /**
      * A list of dependency generators that are accumulated aaaas (and if) the
      * tool is required to sort the provided grammars into build dependency order.
-    protected Map<String, BuildDependencyGenerator> buildDependencyGenerators;
+    protected Map&lt;String, BuildDependencyGenerator&gt; buildDependencyGenerators;
      */
 
     public static void main(String[] args) {
@@ -104,7 +109,7 @@ public class Tool {
      * variables that must be initialized from it, such as the version of ANTLR.
      */
     private void loadResources() {
-        InputStream in = null;
+        InputStream in;
         in = this.getClass().getResourceAsStream("antlr.properties");
 
         // If we found the resource, then load it, otherwise revert to the
@@ -129,6 +134,7 @@ public class Tool {
         loadResources();
     }
 
+	@SuppressWarnings("OverridableMethodCallInConstructor")
     public Tool(String[] args) {
         loadResources();
 
@@ -385,6 +391,15 @@ public class Tool {
         for (File outputFile : outputFiles) {
             if (!outputFile.exists() || grammarLastModified > outputFile.lastModified()) {
                 // One of the output files does not exist or is out of date, so we must build it
+				if (isVerbose()) {
+					if (!outputFile.exists()) {
+						System.out.println("Output file " + outputFile + " does not exist: must build " + grammarFile);
+					}
+					else {
+						System.out.println("Output file " + outputFile + " is not up-to-date: must build " + grammarFile);
+					}
+				}
+
                 return true;
             }
             // Check all of the imported grammars and see if any of these are younger
@@ -394,6 +409,10 @@ public class Tool {
 
                     if (inputFile.lastModified() > outputFile.lastModified()) {
                         // One of the imported grammar files has been updated so we must build
+						if (isVerbose()) {
+							System.out.println("Input file " + inputFile + " is newer than output: must rebuild " + grammarFile);
+						}
+
                         return true;
                     }
                 }
@@ -407,7 +426,7 @@ public class Tool {
 
     public void process() {
         boolean exceptionWhenWritingLexerFile = false;
-        String lexerGrammarFileName = null;		// necessary at this scope to have access in the catch below
+        String lexerGrammarFileName;		// necessary at this scope to have access in the catch below
 
         // Have to be tricky here when Maven or build tools call in and must new Tool()
         // before setting options. The banner won't display that way!
@@ -539,7 +558,7 @@ public class Tool {
                 }
                 else {
                     ErrorManager.error(ErrorManager.MSG_CANNOT_OPEN_FILE,
-                                       grammarFileName);
+                                       grammarFileName, e);
                 }
             }
             catch (Exception e) {
@@ -558,7 +577,7 @@ public class Tool {
 
     public void sortGrammarFiles() throws IOException {
         //System.out.println("Grammar names "+getGrammarFileNames());
-        Graph g = new Graph();
+        Graph<String> g = new Graph<String>();
         List<String> missingFiles = new ArrayList<String>();
         for (String gfile : grammarFileNames) {
             try {
@@ -572,15 +591,15 @@ public class Tool {
                 g.addEdge(grammarName+CodeGenerator.VOCAB_FILE_EXTENSION, gfile);
             }
             catch (FileNotFoundException fnfe) {
-                ErrorManager.error(ErrorManager.MSG_CANNOT_OPEN_FILE, gfile);
+                ErrorManager.error(ErrorManager.MSG_CANNOT_OPEN_FILE, gfile, fnfe);
                 missingFiles.add(gfile);
             }
         }
-        List<Object> sorted = g.sort();
+        List<String> sorted = g.sort();
         //System.out.println("sorted="+sorted);
         grammarFileNames.clear(); // wipe so we can give new ordered list
         for (int i = 0; i < sorted.size(); i++) {
-            String f = (String)sorted.get(i);
+            String f = sorted.get(i);
             if ( missingFiles.contains(f) ) continue;
             if ( !(f.endsWith(".g") || f.endsWith(".g3")) ) continue;
             grammarFileNames.add(f);
@@ -599,8 +618,8 @@ public class Tool {
         CompositeGrammar composite = new CompositeGrammar();
         Grammar grammar = new Grammar(this, grammarFileName, composite);
         composite.setDelegationRoot(grammar);
-        FileReader fr = null;
-        File f = null;
+        FileReader fr;
+        File f;
 
         if (haveInputDir) {
             f = new File(inputDirectory, grammarFileName);
@@ -660,7 +679,7 @@ public class Tool {
 
             List<Grammar> delegates = grammar.getDirectDelegates();
             for (int i = 0; delegates != null && i < delegates.size(); i++) {
-                Grammar delegate = (Grammar) delegates.get(i);
+                Grammar delegate = delegates.get(i);
                 if (delegate != grammar) { // already processing this one
                     generateRecognizer(delegate);
                 }
@@ -692,11 +711,10 @@ public class Tool {
 
     protected void generateNFAs(Grammar g) {
         DOTGenerator dotGenerator = new DOTGenerator(g);
-        Collection rules = g.getAllImportedRules();
+        Collection<Rule> rules = new HashSet<Rule>(g.getAllImportedRules());
         rules.addAll(g.getRules());
 
-        for (Iterator itr = rules.iterator(); itr.hasNext();) {
-            Rule r = (Rule) itr.next();
+        for (Rule r : rules) {
             try {
                 String dot = dotGenerator.getDOT(r.startState);
                 if (dot != null) {
@@ -879,11 +897,10 @@ public class Tool {
      * to the input directory.
      *
      * @param fileNameWithPath path to input source
-     * @return
      */
     public File getOutputDirectory(String fileNameWithPath) {
 
-        File outputDir = new File(getOutputDirectory());
+        File outputDir;
         String fileDirectory;
 
         // Some files are given to us without a PATH but should should

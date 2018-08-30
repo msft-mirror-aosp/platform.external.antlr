@@ -176,7 +176,7 @@ public interface DebugEventListener {
 	 *		enterAlt1
 	 *		location 7 5
 	 *		LT(1)
-	 *		consumeToken [c/<4>,1:0]
+	 *		consumeToken [c/&lt;4&gt;,1:0]
 	 *		location 7 7
 	 *		enterSubRule 2
 	 *		enter decision 2
@@ -187,7 +187,7 @@ public interface DebugEventListener {
 	 *		exitSubRule 2
 	 *		beginResync
 	 *		LT(1)
-	 *		consumeToken [c/<4>,1:1]
+	 *		consumeToken [c/&lt;4&gt;,1:1]
 	 *		LT(1)
 	 *		endResync
 	 *		LT(-1)
@@ -301,7 +301,7 @@ public interface DebugEventListener {
 	 *  If you are receiving this event over a socket via
 	 *  RemoteDebugEventSocketListener then only IDs are set.
 	 *
-	 *  @see org.antlr.runtime.tree.TreeAdaptor.becomeRoot()
+	 *  @see org.antlr.runtime.tree.TreeAdaptor#becomeRoot
 	 */
 	public void becomeRoot(Object newRoot, Object oldRoot);
 
@@ -310,7 +310,7 @@ public interface DebugEventListener {
 	 *  If you are receiving this event over a socket via
 	 *  RemoteDebugEventSocketListener then only IDs are set.
 	 * 
-	 *  @see org.antlr.runtime.tree.TreeAdaptor.addChild()
+	 *  @see org.antlr.runtime.tree.TreeAdaptor#addChild
 	 */
 	public void addChild(Object root, Object child);
 

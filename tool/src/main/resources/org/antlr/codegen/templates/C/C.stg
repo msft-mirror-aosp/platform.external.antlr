@@ -1447,8 +1447,8 @@ static pANTLR3_UINT8    *getTokenNames()
 	//
 <grammar.delegatedRules:{ruleDescriptor|
     <returnType()> <ruleDescriptor.name>(p<name> ctx<if(ruleDescriptor.parameterScope.attributes)>, <endif><ruleDescriptor.parameterScope:parameterScope()>)
-    {
-        <if(ruleDescriptor.hasReturnValue)>return <endif>       ctx-><ruleDescriptor.grammar:delegateName()>-><ruleDescriptor.name>(ctx-><ruleDescriptor.grammar:delegateName()><if(ruleDescriptor.parameterScope.attributes)>, <endif><ruleDescriptor.parameterScope.attributes:{a|<a.name>}; separator=", ">);
+    \{
+        <if(ruleDescriptor.hasReturnValue)>return <endif>ctx-><ruleDescriptor.grammar:delegateName()>-><ruleDescriptor.name>(ctx-><ruleDescriptor.grammar:delegateName()><if(ruleDescriptor.parameterScope.attributes)>, <endif><ruleDescriptor.parameterScope.attributes:{a|<a.name>}; separator=", ">);
 	\}}; separator="\n">
 
 <endif>
@@ -1696,7 +1696,7 @@ ruleDeclarations() ::= <<
 }>
 <endif>
 <if(memoize)>
-ANTLR3_UINT32 <ruleDescriptor.name>_StartIndex;
+ANTLR3_MARKER <ruleDescriptor.name>_StartIndex;
 <endif>
 >>
 
@@ -2132,9 +2132,7 @@ else
 <if(LEXER)>
     LRECOVER();
 <else>
-<! use following code to make it recover inline;
     RECOVERFROMMISMATCHEDSET(&FOLLOW_set_in_<ruleName><elementIndex>);
-!>
 <endif>
     goto rule<ruleDescriptor.name>Ex;
 }<\n>
@@ -2145,10 +2143,7 @@ CONSTRUCTEX();
 EXCEPTION->type         = ANTLR3_MISMATCHED_SET_EXCEPTION;
 EXCEPTION->name         = (void *)ANTLR3_MISMATCHED_SET_NAME;
 <if(PARSER)>
-EXCEPTION->expectingSet = NULL;
-<! use following code to make it recover inline;
 EXCEPTION->expectingSet = &FOLLOW_set_in_<ruleName><elementIndex>;
-!>
 <endif>
 >>
 
@@ -2508,14 +2503,14 @@ static const ANTLR3_INT32 dfa<dfa.decisionNumber>_special[<dfa.numberOfStates>] 
 static const ANTLR3_INT32 dfa<dfa.decisionNumber>_T<i0>[] =
     {
 	<table; separator=", ", wrap="\n", null="-1">
-    \};<\n>}; null = "">
+    \};}; null = "">
 
 /* Transition tables are a table of sub tables, with some tables
  * reused for efficiency.
  */
 static const ANTLR3_INT32 * const dfa<dfa.decisionNumber>_transitions[] =
 {
-    <dfa.transitionEdgeTables:{xref|dfa<dfa.decisionNumber>_T<xref>}; separator=", ", wrap="\n", null="NULL">
+    <dfa.transitionEdgeTables:{xref|dfa<dfa.decisionNumber>_T<xref>}; separator=", ", wrap="\n", null="_empty">
 };
 
 <if(dfa.specialStateSTs)>
@@ -2629,7 +2624,7 @@ eotDFAEdge(targetStateNumber,edgeNumber, predicates) ::= <<
 
 andPredicates(left,right) ::= "( (<left>) && (<right>) )"
 
-orPredicates(operands) ::= "((<first(operands)>)<rest(operands):{o | ||(<o>)}>)"
+orPredicates(operands) ::= "(<operands:{o|(<o>)}; separator=\"||\">)"
 
 notPredicate(pred) ::= "!( <evalPredicate(pred,{})> )"
 
@@ -2738,7 +2733,7 @@ void
     // next too far so we don't want to keep freeing and allocating them
     //
     ctx-><scopeStack(sname=scope.name,...)>_limit--;
-    SCOPE_TOP(<scope.name>) = (<scopeType(sname=scope.name)>)(ctx-><scopeStack(sname=scope.name,...)>->get(ctx-><bscopeStack(sname=scope.name,...)>, ctx-><scopeStack(sname=scope.name,...)>_limit - 1));
+    SCOPE_TOP(<scope.name>) = (<scopeType(sname=scope.name)>)(ctx-><scopeStack(sname=scope.name,...)>->get(ctx-><scopeStack(sname=scope.name,...)>, ctx-><scopeStack(sname=scope.name,...)>_limit - 1));
 }
 <endif>
 >>
@@ -3023,7 +3018,7 @@ void
 %>
 
 delegateName(d) ::= <<
-<if(d.label)><d.label><else>g<d.name><endif>
+<if(d.label)><d.label><else>g<it.name><endif>
 >>
 
 /** Using a type to init value map, try to init a type; if not in table
