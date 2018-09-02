@@ -38,10 +38,10 @@ import java.util.*;
 
 /** A binary tree structure used to record the semantic context in which
  *  an NFA configuration is valid.  It's either a single predicate or
- *  a tree representing an operation tree such as: p1&&p2 or p1||p2.
+ *  a tree representing an operation tree such as: p1&amp;&amp;p2 or p1||p2.
  *
- *  For NFA o-p1->o-p2->o, create tree AND(p1,p2).
- *  For NFA (1)-p1->(2)
+ *  For NFA o-p1-&gt;o-p2-&gt;o, create tree AND(p1,p2).
+ *  For NFA (1)-p1-&gt;(2)
  *           |       ^
  *           |       |
  *          (3)-p2----
@@ -65,8 +65,8 @@ public abstract class SemanticContext {
 	public static final SemanticContext EMPTY_SEMANTIC_CONTEXT = new Predicate(Predicate.INVALID_PRED_VALUE);
 
 	/** Given a semantic context expression tree, return a tree with all
-	 *  nongated predicates set to true and then reduced.  So p&&(q||r) would
-	 *  return p&&r if q is nongated but p and r are gated.
+	 *  nongated predicates set to true and then reduced.  So p&amp;&amp;(q||r) would
+	 *  return p&amp;&amp;r if q is nongated but p and r are gated.
 	 */
 	public abstract SemanticContext getGatedPredicateContext();
 
@@ -88,7 +88,7 @@ public abstract class SemanticContext {
 		/** The AST node in tree created from the grammar holding the predicate */
 		public GrammarAST predicateAST;
 
-		/** Is this a {...}?=> gating predicate or a normal disambiguating {..}?
+		/** Is this a {...}?=&gt; gating predicate or a normal disambiguating {..}?
 		 *  If any predicate in expression is gated, then expression is considered
 		 *  gated.
 		 *
@@ -139,6 +139,7 @@ public abstract class SemanticContext {
 		 *  Or, if they have the same constant value, return equal.
 		 *  As of July 2006 I'm not sure these are needed.
 		 */
+		@Override
 		public boolean equals(Object o) {
 			if ( !(o instanceof Predicate) ) {
 				return false;
@@ -156,6 +157,7 @@ public abstract class SemanticContext {
 			return predicateAST.getText().equals(other.predicateAST.getText());
 		}
 
+		@Override
 		public int hashCode() {
 			if (constantValue != INVALID_PRED_VALUE){
 				return constantValue;
@@ -168,11 +170,12 @@ public abstract class SemanticContext {
 			return predicateAST.getText().hashCode();
 		}
 
+		@Override
 		public ST genExpr(CodeGenerator generator,
 									  STGroup templates,
 									  DFA dfa)
 		{
-			ST eST = null;
+			ST eST;
 			if ( templates!=null ) {
 				if ( synpred ) {
 					eST = templates.getInstanceOf("evalSynPredicate");
@@ -415,7 +418,7 @@ public abstract class SemanticContext {
 
 		@Override
 		public String toString() {
-			StringBuffer buf = new StringBuffer();
+			StringBuilder buf = new StringBuilder();
 			buf.append("(");
 			int i = 0;
 			for (SemanticContext semctx : operands) {
@@ -452,10 +455,12 @@ public abstract class SemanticContext {
 		{
 			ST result = null;
 			for (SemanticContext operand : operands) {
-				if (result == null)
+				if (result == null) {
 					result = operand.genExpr(generator, templates, dfa);
+					continue;
+				}
 
-				ST eST = null;
+				ST eST;
 				if ( templates!=null ) {
 					eST = templates.getInstanceOf("andPredicates");
 				}
@@ -505,12 +510,12 @@ public abstract class SemanticContext {
 									  STGroup templates,
 									  DFA dfa)
 		{
-			ST eST = null;
+			ST eST;
 			if ( templates!=null ) {
 				eST = templates.getInstanceOf("orPredicates");
 			}
 			else {
-				eST = new ST("(<first(operands)><rest(operands):{o | ||<o>}>)");
+				eST = new ST("(<operands; separator=\"||\">)");
 			}
 			for (SemanticContext semctx : operands) {
 				eST.add("operands", semctx.genExpr(generator,templates,dfa));
@@ -550,7 +555,7 @@ public abstract class SemanticContext {
 									  STGroup templates,
 									  DFA dfa)
 		{
-			ST eST = null;
+			ST eST;
 			if ( templates!=null ) {
 				eST = templates.getInstanceOf("notPredicate");
 			}
@@ -606,6 +611,9 @@ public abstract class SemanticContext {
 
 	public static SemanticContext and(SemanticContext a, SemanticContext b) {
 		//System.out.println("AND: "+a+"&&"+b);
+		if (a instanceof FalsePredicate || b instanceof FalsePredicate)
+			return new FalsePredicate();
+
 		SemanticContext[] terms = factorOr(a, b);
 		SemanticContext commonTerms = terms[0];
 		a = terms[1];
@@ -638,11 +646,19 @@ public abstract class SemanticContext {
 		//    return a;
 
 		//System.out.println("## have to AND");
-		return new AND(a,b);
+		AND result = new AND(a,b);
+		if (result.operands.size() == 1) {
+			return result.operands.iterator().next();
+		}
+
+		return result;
 	}
 
 	public static SemanticContext or(SemanticContext a, SemanticContext b) {
 		//System.out.println("OR: "+a+"||"+b);
+		if (a instanceof TruePredicate || b instanceof TruePredicate)
+			return new TruePredicate();
+
 		SemanticContext[] terms = factorAnd(a, b);
 		SemanticContext commonTerms = terms[0];
 		a = terms[1];
@@ -722,11 +738,11 @@ public abstract class SemanticContext {
 
 		HashSet<SemanticContext> result = new HashSet<SemanticContext>(opsA);
 		result.retainAll(opsB);
-		if (result.size() == 0)
+		if (result.isEmpty())
 			return new SemanticContext[] { EMPTY_SEMANTIC_CONTEXT, a, b };
 
 		opsA.removeAll(result);
-		if (opsA.size() == 0)
+		if (opsA.isEmpty())
 			a = new TruePredicate();
 		else if (opsA.size() == 1)
 			a = opsA.iterator().next();
@@ -734,7 +750,7 @@ public abstract class SemanticContext {
 			a = new AND(opsA);
 
 		opsB.removeAll(result);
-		if (opsB.size() == 0)
+		if (opsB.isEmpty())
 			b = new TruePredicate();
 		else if (opsB.size() == 1)
 			b = opsB.iterator().next();
@@ -755,11 +771,11 @@ public abstract class SemanticContext {
 
 		HashSet<SemanticContext> result = new HashSet<SemanticContext>(opsA);
 		result.retainAll(opsB);
-		if (result.size() == 0)
+		if (result.isEmpty())
 			return new SemanticContext[] { EMPTY_SEMANTIC_CONTEXT, a, b };
 
 		opsA.removeAll(result);
-		if (opsA.size() == 0)
+		if (opsA.isEmpty())
 			a = new FalsePredicate();
 		else if (opsA.size() == 1)
 			a = opsA.iterator().next();
@@ -767,7 +783,7 @@ public abstract class SemanticContext {
 			a = new OR(opsA);
 
 		opsB.removeAll(result);
-		if (opsB.size() == 0)
+		if (opsB.isEmpty())
 			b = new FalsePredicate();
 		else if (opsB.size() == 1)
 			b = opsB.iterator().next();

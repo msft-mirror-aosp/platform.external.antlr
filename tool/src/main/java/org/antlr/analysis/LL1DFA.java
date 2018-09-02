@@ -34,6 +34,7 @@ import org.antlr.misc.MultiMap;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /** A special DFA that is exactly LL(1) or LL(1) with backtracking mode
  *  predicates to resolve edge set collisions.
@@ -42,12 +43,13 @@ public class LL1DFA extends DFA {
 	/** From list of lookahead sets (one per alt in decision), create
 	 *  an LL(1) DFA.  One edge per set.
 	 *
-	 *  s0-{alt1}->:o=>1
+	 *  s0-{alt1}-&gt;:o=&gt;1
 	 *  | \
-	 *  |  -{alt2}->:o=>2
+	 *  |  -{alt2}-&gt;:o=&gt;2
 	 *  |
 	 *  ...
 	 */
+	@SuppressWarnings("OverridableMethodCallInConstructor")
 	public LL1DFA(int decisionNumber, NFAState decisionStartState, LookaheadSet[] altLook) {
 		DFAState s0 = newState();
 		startState = s0;
@@ -68,9 +70,10 @@ public class LL1DFA extends DFA {
 		}
 	}
 
-	/** From a set of edgeset->list-of-alts mappings, create a DFA
-	 *  that uses syn preds for all |list-of-alts|>1.
+	/** From a set of edgeset&rarr;list-of-alts mappings, create a DFA
+	 *  that uses syn preds for all |list-of-alts|&gt;1.
 	 */
+	@SuppressWarnings("OverridableMethodCallInConstructor")
 	public LL1DFA(int decisionNumber,
 				  NFAState decisionStartState,
 				  MultiMap<IntervalSet, Integer> edgeMap)
@@ -83,9 +86,9 @@ public class LL1DFA extends DFA {
 		this.decisionNFAStartState = decisionStartState;
 		initAltRelatedInfo();
 		unreachableAlts = null;
-		for (Iterator it = edgeMap.keySet().iterator(); it.hasNext();) {
-			IntervalSet edge = (IntervalSet)it.next();
-			List<Integer> alts = edgeMap.get(edge);
+		for (Map.Entry<IntervalSet, List<Integer>> entry : edgeMap.entrySet()) {
+			IntervalSet edge = entry.getKey();
+			List<Integer> alts = entry.getValue();
 			Collections.sort(alts); // make sure alts are attempted in order
 			//System.out.println(edge+" -> "+alts);
 			DFAState s = newState();
@@ -138,7 +141,7 @@ public class LL1DFA extends DFA {
 	}
 
 	protected Label getLabelForSet(IntervalSet edgeSet) {
-		Label e = null;
+		Label e;
 		int atom = edgeSet.getSingleElement();
 		if ( atom != Label.INVALID ) {
 			e = new Label(atom);

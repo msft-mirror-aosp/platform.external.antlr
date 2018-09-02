@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.antlr</groupId>
     <artifactId>gunit</artifactId>
     <packaging>jar</packaging>
   
-    <name>ANTLR gUnit v3.4</name>
+    <name>ANTLR 3 gUnit</name>
+    <description>gUnit grammar testing tool for ANTLR 3</description>
+
   <!--
 
     Inherit from the ANTLR master pom, which tells us what
@@ -16,11 +17,11 @@
     <parent>
         <groupId>org.antlr</groupId>
         <artifactId>antlr-master</artifactId>
-        <version>3.4</version>
+        <version>3.5.2</version>
     </parent>
 
     <url>http://www.antlr.org/wiki/display/ANTLR3/gUnit+-+Grammar+Unit+Testing</url>
-  
+
   <!--
 
     Tell Maven which other artifacts we need in order to
@@ -37,7 +38,6 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.8.2</version>
             <scope>compile</scope>
         </dependency>
 
@@ -48,26 +48,16 @@
             <scope>compile</scope>
             
         </dependency>
-
-        <dependency>
-            <groupId>org.antlr</groupId>
-            <artifactId>ST4</artifactId>
-            <version>4.0.4</version>
-            <scope>compile</scope>
-        </dependency>
-
+        
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>stringtemplate</artifactId>
-            <version>3.2.1</version>
             <scope>compile</scope>
         </dependency>
-        
+
     </dependencies>
 
     <build>
-
-        <defaultGoal>install</defaultGoal>
 
         <plugins>
 
@@ -75,7 +65,7 @@
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr3-maven-plugin</artifactId>
                 <version>${project.version}</version>
-                <configuration></configuration>
+                <configuration />
                 <executions>
                     <execution>
                         <goals>
@@ -85,42 +75,8 @@
                 </executions>
             </plugin>
 
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>1.6</source>
-                    <target>jsr14</target>
-                    <sourceDirectory>src</sourceDirectory>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.9</version>
-            </plugin>
-
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>findbugs-maven-plugin</artifactId>
-                <version>2.3.2</version>
-                <configuration>
-                    <findbugsXmlOutput>true</findbugsXmlOutput>
-                    <findbugsXmlWithMessages>true</findbugsXmlWithMessages>
-                    <xmlOutput>true</xmlOutput>
-                </configuration>
-            </plugin>
-
         </plugins>
 
-        <extensions>
-            <extension>
-                <groupId>org.apache.maven.wagon</groupId>
-                <artifactId>wagon-ssh-external</artifactId>
-                <version>1.0-beta-2</version>
-            </extension>
-        </extensions>
-
-    
     </build>
 
 </project>

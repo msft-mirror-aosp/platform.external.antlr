@@ -40,6 +40,7 @@
 tree grammar CodeGenTreeWalker;
 
 options {
+	language=Java;
 	tokenVocab = ANTLR;
 	ASTLabelType=GrammarAST;
 }
@@ -409,7 +410,7 @@ rule returns [ST code=null]
 	// For syn preds, we don't want any AST code etc... in there.
 	// Save old templates ptr and restore later.  Base templates include Dbg.
 	STGroup saveGroup = templates;
-	if ( ruleDescr.isSynPred )
+	if ( ruleDescr.isSynPred && generator.target.useBaseTemplatesForSynPredFragments() )
 	{
 		templates = generator.getBaseTemplates();
 	}
@@ -425,7 +426,7 @@ rule returns [ST code=null]
 			( ^(OPTIONS .*) )?
 			(ruleScopeSpec)?
 			( ^(AMPERSAND .*) )*
-			b=block["ruleBlock", dfa]
+			b=block["ruleBlock", dfa, null]
 			{
 				description =
 					grammar.grammarTreeToString((GrammarAST)$start.getFirstChildWithType(BLOCK),
@@ -526,7 +527,7 @@ ruleScopeSpec
 	:	^( 'scope' ( ^(AMPERSAND .*) )* (ACTION)? ( ID )* )
 	;
 
-block[String blockTemplateName, org.antlr.analysis.DFA dfa]
+block[String blockTemplateName, org.antlr.analysis.DFA dfa, GrammarAST label]
 	 returns [ST code=null]
 options { k=1; }
 @init
@@ -565,7 +566,7 @@ options { k=1; }
 
 	|	^(  BLOCK
 			( ^(OPTIONS .*) )? // ignore
-			( alt=alternative rew=rewrite
+			( alt=alternative[$label] rew=rewrite
 				{
 					if ( this.blockNestingLevel==RULE_BLOCK_NESTING_LEVEL )
 					{
@@ -574,7 +575,7 @@ options { k=1; }
 					// add the rewrite code as just another element in the alt :)
 					// (unless it's a " -> ..." rewrite
 					// ( -> ... )
-					GrammarAST firstRewriteAST = (GrammarAST)$rew.start.findFirstType(REWRITE);
+					GrammarAST firstRewriteAST = $rew.start.findFirstType(REWRITE);
 					boolean etc =
 						$rew.start.getType()==REWRITES &&
 						firstRewriteAST.getChild(0)!=null &&
@@ -659,7 +660,7 @@ exceptionGroup[ST ruleST]
 exceptionHandler[ST ruleST]
 	:	^('catch' ARG_ACTION ACTION)
 		{
-			List chunks = generator.translateAction(currentRuleName,$ACTION);
+			List<? extends Object> chunks = generator.translateAction(currentRuleName,$ACTION);
 			$ruleST.addAggr("exceptions.{decl,action}",$ARG_ACTION.text,chunks);
 		}
 	;
@@ -667,12 +668,12 @@ exceptionHandler[ST ruleST]
 finallyClause[ST ruleST]
 	:	^('finally' ACTION)
 		{
-			List chunks = generator.translateAction(currentRuleName,$ACTION);
+			List<? extends Object> chunks = generator.translateAction(currentRuleName,$ACTION);
 			$ruleST.add("finally",chunks);
 		}
 	;
 
-alternative returns [ST code]
+alternative[GrammarAST label] returns [ST code]
 @init
 {
 	if ( state.backtracking == 0 )
@@ -695,9 +696,9 @@ alternative returns [ST code]
 }
 	:	^(	a=ALT
 			(
-				e=element[null,null]
+				e=element[$label,null]
 				{
-					if (e != null && e.code != null)
+					if ($e.code != null)
 					{
 						$code.addAggr("elements.{el,line,pos}",
 										  $e.code,
@@ -718,14 +719,14 @@ options { k=1; }
 	IntSet elements=null;
 	GrammarAST ast = null;
 }
-	:	^(ROOT e=element[label,$ROOT])
+	:	^(ROOT e=element[$label,$ROOT])
 		{ $code = $e.code; }
 
-	|	^(BANG e=element[label,$BANG])
+	|	^(BANG e=element[$label,$BANG])
 		{ $code = $e.code; }
 
-	|	^( n=NOT notElement[$n, $label, $astSuffix] )
-		{ $code = $notElement.code; }
+	|	^( n=NOT ne=notElement[$n, $label, $astSuffix] )
+		{ $code = $ne.code; }
 
 	|	^( ASSIGN alabel=ID e=element[$alabel,$astSuffix] )
 		{ $code = $e.code; }
@@ -746,7 +747,7 @@ options { k=1; }
 			}
 		}
 
-	|	({((GrammarAST)input.LT(1)).getSetValue()==null}? (BLOCK|OPTIONAL|CLOSURE|POSITIVE_CLOSURE)) => /*{$start.getSetValue()==null}?*/ ebnf
+	|	({((GrammarAST)input.LT(1)).getSetValue()==null}? (BLOCK|OPTIONAL|CLOSURE|POSITIVE_CLOSURE)) => /*{$start.getSetValue()==null}?*/ ebnf[$label]
 		{ $code = $ebnf.code; }
 
 	|	atom[null, $label, $astSuffix]
@@ -851,24 +852,24 @@ notElement[GrammarAST n, GrammarAST label, GrammarAST astSuffix] returns [ST cod
 		}
 	;
 
-ebnf returns [ST code=null]
+ebnf[GrammarAST label] returns [ST code=null]
 @init
 {
 	org.antlr.analysis.DFA dfa=null;
 	GrammarAST b = (GrammarAST)$start.getChild(0);
-	GrammarAST eob = (GrammarAST)b.getLastChild(); // loops will use EOB DFA
+	GrammarAST eob = b.getLastChild(); // loops will use EOB DFA
 }
 	:	(	{ dfa = $start.getLookaheadDFA(); }
-			blk=block["block", dfa]
+			blk=block["block", dfa, $label]
 			{ $code = $blk.code; }
 		|	{ dfa = $start.getLookaheadDFA(); }
-			^( OPTIONAL blk=block["optionalBlock", dfa] )
+			^( OPTIONAL blk=block["optionalBlock", dfa, $label] )
 			{ $code = $blk.code; }
 		|	{ dfa = eob.getLookaheadDFA(); }
-			^( CLOSURE blk=block["closureBlock", dfa] )
+			^( CLOSURE blk=block["closureBlock", dfa, $label] )
 			{ $code = $blk.code; }
 		|	{ dfa = eob.getLookaheadDFA(); }
-			^( POSITIVE_CLOSURE blk=block["positiveClosureBlock", dfa] )
+			^( POSITIVE_CLOSURE blk=block["positiveClosureBlock", dfa, $label] )
 			{ $code = $blk.code; }
 		)
 		{
@@ -952,13 +953,13 @@ atom[GrammarAST scope, GrammarAST label, GrammarAST astSuffix]
 			 ($start.getType()==RULE_REF||$start.getType()==TOKEN_REF||
 			  $start.getType()==CHAR_LITERAL||$start.getType()==STRING_LITERAL) )
 		{
-			Rule encRule = grammar.getRule(((GrammarAST)$start).enclosingRuleName);
+			Rule encRule = grammar.getRule($start.enclosingRuleName);
 			if ( encRule!=null && encRule.hasRewrite(outerAltNum) && astSuffix!=null )
 			{
 				ErrorManager.grammarError(ErrorManager.MSG_AST_OP_IN_ALT_WITH_REWRITE,
 										  grammar,
-										  ((GrammarAST)$start).getToken(),
-										  ((GrammarAST)$start).enclosingRuleName,
+										  $start.getToken(),
+										  $start.enclosingRuleName,
 										  outerAltNum);
 				astSuffix = null;
 			}
@@ -1001,7 +1002,7 @@ atom[GrammarAST scope, GrammarAST label, GrammarAST astSuffix]
 			}
 
 			if ( $rarg!=null ) {
-				List args = generator.translateAction(currentRuleName,$rarg);
+				List<? extends Object> args = generator.translateAction(currentRuleName,$rarg);
 				$code.add("args", args);
 			}
 			int i = ((CommonToken)r.getToken()).getTokenIndex();
@@ -1017,7 +1018,7 @@ atom[GrammarAST scope, GrammarAST label, GrammarAST astSuffix]
 			{
 				ErrorManager.grammarError(ErrorManager.MSG_HETERO_ILLEGAL_IN_REWRITE_ALT,
 										grammar,
-										((GrammarAST)($t)).getToken(),
+										$t.getToken(),
 										$t.text);
 			}
 			grammar.checkRuleReference(scope, $t, $targ, currentRuleName);
@@ -1053,7 +1054,7 @@ atom[GrammarAST scope, GrammarAST label, GrammarAST astSuffix]
 					}
 					if ( $targ!=null )
 					{
-						List args = generator.translateAction(currentRuleName,$targ);
+						List<? extends Object> args = generator.translateAction(currentRuleName,$targ);
 						$code.add("args", args);
 					}
 				}
@@ -1239,7 +1240,7 @@ rewrite returns [ST code=null]
 				^( r=REWRITE (pred=SEMPRED)? alt=rewrite_alternative)
 				{
 					rewriteBlockNestingLevel = OUTER_REWRITE_NESTING_LEVEL;
-					List predChunks = null;
+					List<? extends Object> predChunks = null;
 					if ( $pred!=null )
 					{
 						//predText = #pred.getText();
@@ -1409,7 +1410,7 @@ rewrite_atom[boolean isRoot] returns [ST code=null]
 			{
 				ErrorManager.grammarError(ErrorManager.MSG_UNDEFINED_RULE_REF,
 										  grammar,
-										  ((GrammarAST)($r)).getToken(),
+										  $r.getToken(),
 										  ruleRefName);
 				$code = new ST(""); // blank; no code gen
 			}
@@ -1418,7 +1419,7 @@ rewrite_atom[boolean isRoot] returns [ST code=null]
 			{
 				ErrorManager.grammarError(ErrorManager.MSG_REWRITE_ELEMENT_NOT_PRESENT_ON_LHS,
 										  grammar,
-										  ((GrammarAST)($r)).getToken(),
+										  $r.getToken(),
 										  ruleRefName);
 				$code = new ST(""); // blank; no code gen
 			}
@@ -1455,10 +1456,12 @@ rewrite_atom[boolean isRoot] returns [ST code=null]
 				stName += "Root";
 			}
 			$code = templates.getInstanceOf(stName);
-			$code.add("terminalOptions",term.terminalOptions);
+			if (term.terminalOptions != null) {
+				$code.add("terminalOptions",term.terminalOptions);
+			}
 			if ( $arg!=null )
 			{
-				List args = generator.translateAction(currentRuleName,$arg);
+				List<? extends Object> args = generator.translateAction(currentRuleName,$arg);
 				$code.add("args", args);
 			}
 			$code.add("elementIndex", ((CommonToken)$start.getToken()).getTokenIndex());
@@ -1469,7 +1472,7 @@ rewrite_atom[boolean isRoot] returns [ST code=null]
 			{
 				ErrorManager.grammarError(ErrorManager.MSG_UNDEFINED_TOKEN_REF_IN_REWRITE,
 										  grammar,
-										  ((GrammarAST)($start)).getToken(),
+										  $start.getToken(),
 										  tokenName);
 				$code = new ST(""); // blank; no code gen
 			}
@@ -1488,7 +1491,7 @@ rewrite_atom[boolean isRoot] returns [ST code=null]
 				{
 					ErrorManager.grammarError(ErrorManager.MSG_RULE_REF_AMBIG_WITH_RULE_IN_ALT,
 											  grammar,
-											  ((GrammarAST)($LABEL)).getToken(),
+											  $LABEL.getToken(),
 											  labelName);
 				}
 				ST labelST = templates.getInstanceOf("prevRuleRootRef");
@@ -1499,7 +1502,7 @@ rewrite_atom[boolean isRoot] returns [ST code=null]
 			{
 				ErrorManager.grammarError(ErrorManager.MSG_UNDEFINED_LABEL_REF_IN_REWRITE,
 										  grammar,
-										  ((GrammarAST)($LABEL)).getToken(),
+										  $LABEL.getToken(),
 										  labelName);
 				$code = new ST("");
 			}
@@ -1540,7 +1543,7 @@ rewrite_atom[boolean isRoot] returns [ST code=null]
 		{
 			// actions in rewrite rules yield a tree object
 			String actText = $ACTION.text;
-			List chunks = generator.translateAction(currentRuleName,$ACTION);
+			List<? extends Object> chunks = generator.translateAction(currentRuleName,$ACTION);
 			$code = templates.getInstanceOf("rewriteNodeAction"+(isRoot?"Root":""));
 			$code.add("action", chunks);
 		}
@@ -1563,7 +1566,7 @@ rewrite_template returns [ST code=null]
 				else if ( $ind!=null )
 				{ // must be \%({expr})(args)
 					$code = templates.getInstanceOf("rewriteIndirectTemplate");
-					List chunks=generator.translateAction(currentRuleName,$ind);
+					List<? extends Object> chunks=generator.translateAction(currentRuleName,$ind);
 					$code.add("expr", chunks);
 				}
 			}
@@ -1574,7 +1577,7 @@ rewrite_template returns [ST code=null]
 						// because actions like \%foo(name={\$ID.text}) aren't
 						// broken up yet into trees.
 						$a.outerAltNum = this.outerAltNum;
-						List chunks = generator.translateAction(currentRuleName,$a);
+						List<? extends Object> chunks = generator.translateAction(currentRuleName,$a);
 						$code.addAggr("args.{name,value}", $arg.text, chunks);
 					}
 					)

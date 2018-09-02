@@ -35,6 +35,11 @@ import org.stringtemplate.v4.ST;
 import java.util.Set;
 
 public class JavaTarget extends Target {
+    @Override
+    public boolean useBaseTemplatesForSynPredFragments() {
+        return false;
+    }
+
 	protected ST chooseWhereCyclicDFAsGo(Tool tool,
 										 CodeGenerator generator,
 										 Grammar grammar,
@@ -50,7 +55,7 @@ public class JavaTarget extends Target {
 		for (Rule rule : grammar.getRules()) {
 			rule.throwsSpec.add("RecognitionException");
 		}
-		Set<Rule> delegatedRules = grammar.getDelegatedRules();
+		Set<? extends Rule> delegatedRules = grammar.getDelegatedRules();
 		if ( delegatedRules!=null ) {
 			for (Rule rule : delegatedRules) {
 				rule.throwsSpec.add("RecognitionException");

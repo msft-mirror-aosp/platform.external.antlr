@@ -33,8 +33,9 @@ import org.antlr.runtime.RecognitionException;
 import org.antlr.tool.ErrorManager;
 import org.antlr.tool.Grammar;
 import org.antlr.tool.GrammarSyntaxMessage;
-import org.junit.Ignore;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /** Tree rewrites in tree parsers are basically identical to rewrites
  *  in a normal grammar except that the atomic element is a node not
@@ -870,7 +871,6 @@ public class TestTreeGrammarRewriteAST extends BaseTest {
         assertEquals("(12 (abc 34))\n", found);
     }
 
-    @Ignore
     @Test public void testRewriteOfRuleRefRootListLabeled() throws Exception {
         String grammar =
             "grammar T;\n" +

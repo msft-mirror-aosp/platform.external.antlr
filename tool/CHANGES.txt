@@ -1,11 +1,82 @@
-ANTLR 3.4 Release
-July 18, 2011
+ANTLR 3.5 Release
+January 4, 2012
 
 Terence Parr, parrt at cs usfca edu
 ANTLR project lead and supreme dictator for life
 University of San Francisco
 
 CHANGES
+
+January 4 2012 -- release 3.5
+
+January 3, 2012
+
+* Improve error reporting and recovery for STRAY_BRACKET, fixes antlr/antlr3#42
+* Do not write output files if errors were reported, fixes antlr/antlr3#61
+* Fix AST operator on labeled set of terminals e.g. x=(A|B)^
+* Fix labeled set of terminals with rewrite e.g. x=(A|B) -> $x
+
+December 1, 2012
+
+* Added error msg for .. in parser
+
+September 17, 2012
+
+* Add Gokulakannan Somasundaram's C++ target based upon C target.
+  Use language=Cpp in options. It's a header-only library, runtime/Cpp/include,
+  so installation is not required.
+
+September 16, 2012
+
+* Python 3.3 target added by Benjamin Wolf based upon Python 2 target
+  https://github.com/antlr/antlr3/pull/23
+
+September 15, 2012
+
+* LookaheadStream bug fixes;
+  https://github.com/antlr/antlr3/pull/21
+
+* Pulled "Fix Python handling of syntactic predicates"
+  https://github.com/antlr/antlr3/pull/33
+
+July 15, 2012
+
+* GUnit improvements
+  https://github.com/antlr/antlr3/pull/27
+
+May 2012:
+
+* ANTLR3 update of ObjC runtime to go with latest ST4-ObjC
+  https://github.com/antlr/antlr3/pull/17
+
+August 9, 2012
+
+* Provide Lexer get end of file method so people can override it.
+
+November 25, 2011
+
+* stderr not test correctly in gunit examineExecResult
+
+October 27, 2011
+
+* Dieter Habelitz reported bug in java code gen with synpreds. labels were
+  being carried from grammar into synpreds but weren't typed properly (they
+  were "void x=null;" for x=ruleref labels)
+
+October 25, 2011
+
+* (Sam) Rule.setOption didn't do memoize option right.
+* (Sam) Fix labels in synpreds
+* (Sam) Fix input index for NoViableAltException during inline prediction
+* (Sam) Fix label aliasing errors in cases like (x=y|x=z)
+
+August 10, 2011
+
+* (Sam) fix stack overflow in semantic context analysis
+
+July 30, 2011
+
+* added range check to BaseTree.insertChild()
 
 July 18, 2011 -- release 3.4
 

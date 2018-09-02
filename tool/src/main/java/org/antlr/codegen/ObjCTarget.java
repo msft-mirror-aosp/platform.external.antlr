@@ -36,6 +36,7 @@ import org.antlr.tool.Grammar;
 import java.io.IOException;
 
 public class ObjCTarget extends Target {
+	@Override
 	protected void genRecognizerHeaderFile(Tool tool,
 										   CodeGenerator generator,
 										   Grammar grammar,
@@ -46,6 +47,7 @@ public class ObjCTarget extends Target {
 		generator.write(headerFileST, grammar.name + Grammar.grammarTypeToFileNameSuffix[grammar.type] + extName);
 	}
 
+	@Override
 	public String getTargetCharLiteralFromANTLRCharLiteral(CodeGenerator generator,
 														   String literal)
 	{
@@ -63,15 +65,16 @@ public class ObjCTarget extends Target {
 
 	/** Convert from an ANTLR string literal found in a grammar file to
 	*  an equivalent string literal in the target language.  For Java, this
-	*  is the translation 'a\n"' -> "a\n\"".  Expect single quotes
+	*  is the translation 'a\n"' &rarr; "a\n\"".  Expect single quotes
 	*  around the incoming literal.  Just flip the quotes and replace
 	*  double quotes with \"
 	*/
+	@Override
 	public String getTargetStringLiteralFromANTLRStringLiteral(CodeGenerator generator,
 															   String literal)
 	{
 		literal = Utils.replace(literal,"\"","\\\"");
-		StringBuffer buf = new StringBuffer(literal);
+		StringBuilder buf = new StringBuilder(literal);
 		buf.setCharAt(0,'"');
 		buf.setCharAt(literal.length()-1,'"');
 		buf.insert(0,'@');
@@ -79,6 +82,7 @@ public class ObjCTarget extends Target {
 	}
 
 	/** If we have a label, prefix it with the recognizer's name */
+	@Override
 	public String getTokenTypeAsTargetLabel(CodeGenerator generator, int ttype) {
 		String name = generator.grammar.getTokenDisplayName(ttype);
 		// If name is a literal, return the token type instead

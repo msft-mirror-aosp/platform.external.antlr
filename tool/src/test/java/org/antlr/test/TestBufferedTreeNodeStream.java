@@ -34,13 +34,17 @@ import org.antlr.runtime.tree.Tree;
 import org.antlr.runtime.tree.TreeNodeStream;
 import org.junit.Test;
 
+import static org.junit.Assert.*;
+
 public class TestBufferedTreeNodeStream extends TestTreeNodeStream {
     // inherits tests; these methods make it use a new buffer
 
+	@Override
 	public TreeNodeStream newStream(Object t) {
 		return new BufferedTreeNodeStream(t);
 	}
 
+	@Override
     public String toTokenTypeString(TreeNodeStream stream) {
         return ((BufferedTreeNodeStream)stream).toTokenTypeString();
     }
